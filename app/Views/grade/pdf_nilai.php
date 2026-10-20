@@ -86,9 +86,15 @@ $logoPath = (!empty($settings['logo']) && file_exists(FCPATH . $settings['logo']
             <td><strong><?= esc($g['firstname'] . ' ' . $g['lastname']) ?></strong></td>
             <td style="text-align: center; font-family: monospace;"><?= esc($g['username']) ?></td>
             <td style="text-align: center;"><?= esc($g['idnumber'] ?: '-') ?></td>
-            <td style="text-align: center; font-weight: bold;"><?= number_format($g['grade'], 2) ?></td>
+            <td style="text-align: center; font-weight: bold;"><?= $g['grade'] !== null ? number_format($g['grade'], 2) : '-' ?></td>
             <td style="text-align: center;">
-                <?= $g['grade'] >= 75 ? '<span style="color:#059669;font-weight:bold">TUNTAS</span>' : '<span style="color:#dc2626">BELUM TUNTAS</span>' ?>
+                <?php if($g['grade'] !== null): ?>
+                    <?= $g['grade'] >= 75 ? '<span style="color:#059669;font-weight:bold">TUNTAS</span>' : '<span style="color:#dc2626;font-weight:bold">BELUM TUNTAS</span>' ?>
+                <?php elseif(($g['state'] ?? '') === 'inprogress'): ?>
+                    <span style="color:#d97706;font-weight:bold">MENGERJAKAN</span>
+                <?php else: ?>
+                    <span style="color:#6b7280">BELUM UJIAN</span>
+                <?php endif; ?>
             </td>
         </tr>
         <?php endforeach; ?>

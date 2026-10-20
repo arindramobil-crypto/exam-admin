@@ -49,4 +49,122 @@ class MoodleGradeModel extends Model
             return [];
         }
     }
+
+    /**
+     * Get unified grades combining exam participants with Moodle quiz attempts and grades
+     */
+    public function getUnifiedGrades(int $quizId, int $examId, int $subjectId): array
+    {
+        $participantModel = new ParticipantModel();
+        $participants = $participantModel
+            ->where('exam_id', $examId)
+            ->where('subject_id', $subjectId)
+            ->orderBy('nomor_peserta', 'ASC')
+            ->findAll();
+
+        if (empty($participants)) {
+            $participants = $participantModel
+                ->where('exam_id', $examId)
+                ->orderBy('nomor_peserta', 'ASC')
+                ->findAll();
+        }
+
+        $moodleGrades = $this->getGradesByQuiz($quizId);
+        $gradeMap = [];
+        foreach ($moodleGrades as $mg) {
+            $gradeMap[$mg['user_id']] = $mg;
+            $gradeMap['un_' . strtolower(trim($mg['username']))] = $mg;
+        }
+
+        $quizModel = new MoodleQuizModel();
+        $attempts = $quizModel->getQuizAttempts($quizId);
+        $attemptMap = [];
+        foreach ($attempts as $at) {
+            if (!isset($attemptMap[$at['user_id']])) {
+                $attemptMap[$at['user_id']] = $at;
+                $attemptMap['un_' . strtolower(trim($at['username']))] = $at;
+            }
+        }
+
+        $unified = [];
+        $handledMoodleUserIds = [];
+
+        foreach ($participants as $p) {
+            $mUserId = $p['moodle_user_id'] ? (int)$p['moodle_user_id'] : null;
+            $username = strtolower(trim($p['nis'] ?: $p['nomor_peserta']));
+
+            $gData = null;
+            if ($mUserId && isset($gradeMap[$mUserId])) {
+                $gData = $gradeMap[$mUserId];
+            } elseif (isset($gradeMap['un_' . $username])) {
+                $gData = $gradeMap['un_' . $username];
+            }
+
+            $aData = null;
+            if ($mUserId && isset($attemptMap[$mUserId])) {
+                $aData = $attemptMap[$mUserId];
+            } elseif (isset($attemptMap['un_' . $username])) {
+                $aData = $attemptMap['un_' . $username];
+            }
+
+            if ($mUserId) {
+                $handledMoodleUserIds[$mUserId] = true;
+            }
+            if ($gData) {
+                $handledMoodleUserIds[$gData['user_id']] = true;
+            }
+
+            $state = 'not_started';
+            $grade = null;
+            $timemodified = null;
+
+            if ($gData && $gData['grade'] !== null) {
+                $state = 'finished';
+                $grade = (float)$gData['grade'];
+                $timemodified = $gData['timemodified'];
+            } elseif ($aData) {
+                $state = $aData['state'];
+                $grade = $aData['grade'] !== null ? (float)$aData['grade'] : ($aData['sumgrades'] !== null ? (float)$aData['sumgrades'] : null);
+                $timemodified = $aData['timefinish'] ?: $aData['timemodified'];
+            }
+
+            $nameParts = preg_split('/\s+/', trim($p['nama']), 2);
+            $unified[] = [
+                'participant_id' => $p['id'],
+                'user_id'        => $mUserId ?? ($gData['user_id'] ?? null),
+                'nomor_peserta'  => $p['nomor_peserta'],
+                'firstname'      => $nameParts[0] ?? $p['nama'],
+                'lastname'       => $nameParts[1] ?? '',
+                'username'       => $p['nis'] ?: $p['nomor_peserta'],
+                'idnumber'       => $p['nis'] ?: '-',
+                'grade'          => $grade,
+                'state'          => $state,
+                'timemodified'   => $timemodified,
+                'kelas'          => $p['kelas'],
+                'sesi'           => $p['sesi'] ?? 1,
+            ];
+        }
+
+        // Include any Moodle users who took the quiz but were not explicitly registered as participants
+        foreach ($moodleGrades as $mg) {
+            if (!isset($handledMoodleUserIds[$mg['user_id']])) {
+                $unified[] = [
+                    'participant_id' => null,
+                    'user_id'        => $mg['user_id'],
+                    'nomor_peserta'  => '-',
+                    'firstname'      => $mg['firstname'],
+                    'lastname'       => $mg['lastname'],
+                    'username'       => $mg['username'],
+                    'idnumber'       => $mg['idnumber'] ?: '-',
+                    'grade'          => (float)$mg['grade'],
+                    'state'          => 'finished',
+                    'timemodified'   => $mg['timemodified'],
+                    'kelas'          => '-',
+                    'sesi'           => 1,
+                ];
+            }
+        }
+
+        return $unified;
+    }
 }

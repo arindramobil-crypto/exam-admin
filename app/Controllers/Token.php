@@ -47,10 +47,9 @@ class Token extends BaseController
 
     public function deactivate(int $id)
     {
-        $token = $this->tokenModel->find($id);
-        if ($token) {
-            $this->tokenModel->update($id, ['is_active' => 0]);
-            return redirect()->back()->with('success', 'Token berhasil dinonaktifkan.');
+        $success = $this->tokenModel->deactivateToken($id);
+        if ($success) {
+            return redirect()->back()->with('success', 'Token berhasil dinonaktifkan dan password kuis Moodle dibersihkan.');
         }
         return redirect()->back()->with('error', 'Token tidak ditemukan.');
     }

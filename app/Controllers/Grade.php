@@ -22,7 +22,7 @@ class Grade extends BaseController
         $subject = (new ExamSubjectModel())->find($subjectId);
         $grades  = [];
         if ($subject['moodle_quiz_id']) {
-            $grades = (new MoodleGradeModel())->getGradesByQuiz($subject['moodle_quiz_id']);
+            $grades = (new MoodleGradeModel())->getUnifiedGrades((int)$subject['moodle_quiz_id'], $examId, $subjectId);
         }
         return view('grade/view', compact('exam', 'subject', 'grades') + ['title' => 'Nilai ' . $subject['nama_mapel']]);
     }
@@ -31,29 +31,41 @@ class Grade extends BaseController
     {
         $exam    = (new ExamModel())->find($examId);
         $subject = (new ExamSubjectModel())->find($subjectId);
-        $grades  = $subject['moodle_quiz_id'] ? (new MoodleGradeModel())->getGradesByQuiz($subject['moodle_quiz_id']) : [];
+        $grades  = $subject['moodle_quiz_id'] 
+            ? (new MoodleGradeModel())->getUnifiedGrades((int)$subject['moodle_quiz_id'], $examId, $subjectId) 
+            : [];
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Nilai');
         $sheet->setCellValue('A1', 'DAFTAR NILAI ' . strtoupper($subject['nama_mapel']));
         $sheet->setCellValue('A2', $exam['nama_ujian'] . ' - Kelas ' . $subject['kelas']);
-        $sheet->mergeCells('A1:F1');
-        $sheet->mergeCells('A2:F2');
+        $sheet->mergeCells('A1:G1');
+        $sheet->mergeCells('A2:G2');
 
-        $header = ['No', 'Nama', 'Username', 'NIS/NISN', 'Nilai', 'Keterangan'];
+        $header = ['No', 'No. Peserta', 'Nama Siswa', 'Username / NIS', 'Nilai Akhir', 'Status Pengerjaan', 'Keterangan'];
         foreach ($header as $i => $h) {
             $sheet->setCellValue([$i + 1, 4], $h);
         }
 
         foreach ($grades as $r => $g) {
             $row = $r + 5;
+            $ket = '-';
+            $statusStr = 'Belum Ujian';
+            if ($g['grade'] !== null) {
+                $statusStr = 'Selesai';
+                $ket = $g['grade'] >= 75 ? 'TUNTAS' : 'BELUM TUNTAS';
+            } elseif (($g['state'] ?? '') === 'inprogress') {
+                $statusStr = 'Sedang Mengerjakan';
+            }
+
             $sheet->setCellValue([1, $row], $r + 1);
-            $sheet->setCellValue([2, $row], $g['firstname'] . ' ' . $g['lastname']);
-            $sheet->setCellValue([3, $row], $g['username']);
-            $sheet->setCellValue([4, $row], $g['idnumber']);
-            $sheet->setCellValue([5, $row], round($g['grade'], 2));
-            $sheet->setCellValue([6, $row], $g['grade'] >= 75 ? 'TUNTAS' : 'TIDAK TUNTAS');
+            $sheet->setCellValue([2, $row], $g['nomor_peserta'] ?? '-');
+            $sheet->setCellValue([3, $row], trim($g['firstname'] . ' ' . $g['lastname']));
+            $sheet->setCellValue([4, $row], $g['username']);
+            $sheet->setCellValue([5, $row], $g['grade'] !== null ? round($g['grade'], 2) : '-');
+            $sheet->setCellValue([6, $row], $statusStr);
+            $sheet->setCellValue([7, $row], $ket);
         }
 
         $writer = new Xlsx($spreadsheet);
@@ -68,7 +80,9 @@ class Grade extends BaseController
     {
         $exam    = (new ExamModel())->find($examId);
         $subject = (new ExamSubjectModel())->find($subjectId);
-        $grades  = $subject['moodle_quiz_id'] ? (new MoodleGradeModel())->getGradesByQuiz($subject['moodle_quiz_id']) : [];
+        $grades  = $subject['moodle_quiz_id'] 
+            ? (new MoodleGradeModel())->getUnifiedGrades((int)$subject['moodle_quiz_id'], $examId, $subjectId) 
+            : [];
         $settings = (new SettingModel())->getAllKeyValue();
 
         $html    = view('grade/pdf_nilai', compact('exam', 'subject', 'grades', 'settings'));

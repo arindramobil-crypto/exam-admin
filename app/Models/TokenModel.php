@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use CodeIgniter\Model;
+use Config\Database;
+use Throwable;
 
 class TokenModel extends Model
 {
@@ -47,6 +49,10 @@ class TokenModel extends Model
 
         $id = $this->insert($data);
         $data['id'] = $id;
+
+        // Sync token to Moodle Quiz password so students must use it to start the quiz
+        $this->syncToMoodleQuiz($examId, $subjectId, $tokenStr);
+
         return $data;
     }
 
@@ -63,8 +69,71 @@ class TokenModel extends Model
             if (strtotime($token['expires_at']) < time()) {
                 $this->update($token['id'], ['is_active' => 0]);
                 $token['is_active'] = 0;
+                $this->clearMoodleQuizPassword($examId, $subjectId);
             }
         }
         return $token;
+    }
+
+    public function deactivateToken(int $tokenId): bool
+    {
+        $token = $this->find($tokenId);
+        if (!$token) return false;
+
+        $this->update($tokenId, ['is_active' => 0]);
+        $this->clearMoodleQuizPassword((int)$token['exam_id'], !empty($token['subject_id']) ? (int)$token['subject_id'] : null);
+        return true;
+    }
+
+    public function syncToMoodleQuiz(int $examId, ?int $subjectId, string $tokenStr): void
+    {
+        try {
+            $moodleDb = Database::connect('moodle', false);
+            if (!$moodleDb) return;
+
+            $subjectModel = new ExamSubjectModel();
+            if ($subjectId) {
+                $sub = $subjectModel->find($subjectId);
+                $subjects = $sub ? [$sub] : [];
+            } else {
+                $subjects = $subjectModel->where('exam_id', $examId)->findAll();
+            }
+
+            foreach ($subjects as $s) {
+                if (!empty($s['moodle_quiz_id'])) {
+                    $moodleDb->table('quiz')
+                        ->where('id', (int)$s['moodle_quiz_id'])
+                        ->update(['password' => $tokenStr]);
+                }
+            }
+        } catch (Throwable $e) {
+            log_message('error', 'TokenModel::syncToMoodleQuiz error: ' . $e->getMessage());
+        }
+    }
+
+    public function clearMoodleQuizPassword(int $examId, ?int $subjectId): void
+    {
+        try {
+            $moodleDb = Database::connect('moodle', false);
+            if (!$moodleDb) return;
+
+            $subjectModel = new ExamSubjectModel();
+            if ($subjectId) {
+                $sub = $subjectModel->find($subjectId);
+                $subjects = $sub ? [$sub] : [];
+            } else {
+                $subjects = $subjectModel->where('exam_id', $examId)->findAll();
+            }
+
+            foreach ($subjects as $s) {
+                if (!empty($s['moodle_quiz_id'])) {
+                    $moodleDb->table('quiz')
+                        ->where('id', (int)$s['moodle_quiz_id'])
+                        ->update(['password' => '']);
+                }
+            }
+        } catch (Throwable $e) {
+            log_message('error', 'TokenModel::clearMoodleQuizPassword error: ' . $e->getMessage());
+        }
     }
 }
