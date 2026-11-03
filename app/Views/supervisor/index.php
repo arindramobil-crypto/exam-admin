@@ -56,7 +56,7 @@
                         <td><span class="badge badge-selesai">Sesi <?= $sp['sesi'] ?></span></td>
                         <td><small><?= esc($sp['nama_mapel'] ?? 'Semua Mapel') ?></small></td>
                         <td>
-                            <a href="<?= base_url('supervisor/delete/'.$sp['id']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus penugasan ini?')">
+                            <a href="<?= base_url('supervisor/delete/'.$sp['id']) ?>" class="btn btn-sm btn-danger" onclick="event.preventDefault(); showConfirm('<?= base_url('supervisor/delete/'.$sp['id']) ?>', 'Hapus Penugasan', 'Yakin ingin menghapus penugasan pengawas <?= esc(addslashes($sp['nama_pengawas'])) ?>?', 'btn-danger')">
                                 <i class="fas fa-trash"></i>
                             </a>
                         </td>

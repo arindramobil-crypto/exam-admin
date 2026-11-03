@@ -186,7 +186,7 @@
                         <?php endif; ?>
                     </td>
                     <td>
-                        <a href="<?= base_url('participant/delete/'.$p['id']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus peserta ini?')" title="Hapus">
+                        <a href="<?= base_url('participant/delete/'.$p['id']) ?>" class="btn btn-sm btn-danger" onclick="event.preventDefault(); showConfirm('<?= base_url('participant/delete/'.$p['id']) ?>', 'Hapus Peserta', 'Yakin ingin menghapus peserta <?= esc(addslashes($p['nama'])) ?> (<?= esc($p['nomor_peserta']) ?>)?', 'btn-danger')" title="Hapus">
                             <i class="fas fa-trash"></i>
                         </a>
                     </td>

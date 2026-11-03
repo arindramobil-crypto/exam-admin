@@ -84,7 +84,7 @@
                             <a href="<?= base_url('exam/edit/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Edit Ujian">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <a href="<?= base_url('exam/delete/'.$e['id']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus ujian ini?')" title="Hapus Ujian">
+                            <a href="<?= base_url('exam/delete/'.$e['id']) ?>" class="btn btn-sm btn-danger" onclick="event.preventDefault(); showConfirm('<?= base_url('exam/delete/'.$e['id']) ?>', 'Hapus Paket Ujian', 'Yakin ingin menghapus ujian <?= esc(addslashes($e['nama_ujian'])) ?> beserta seluruh data terkait? Tindakan ini tidak dapat dibatalkan.', 'btn-danger')" title="Hapus Ujian">
                                 <i class="fas fa-trash"></i>
                             </a>
                         </div>

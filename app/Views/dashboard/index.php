@@ -78,7 +78,8 @@
                     <th>Tahun / Semester</th>
                     <th>Periode Tanggal</th>
                     <th>Status</th>
-                    <th>Aksi & Monitoring</th>
+                    <th>Token &amp; Peserta</th>
+                    <th>Aksi &amp; Monitoring</th>
                 </tr>
             </thead>
             <tbody>
@@ -97,10 +98,29 @@
                         <?php endif; ?>
                     </td>
                     <td>
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+                            <?php
+                                $stat = $exam_stats[$e['id']] ?? [];
+                                $tok  = $stat['active_token'] ?? null;
+                                $jmlP = $stat['total_peserta'] ?? 0;
+                            ?>
+                            <!-- Badge token aktif -->
+                            <?php if($tok && $tok['is_active']): ?>
+                                <span class="badge" style="background:rgba(16,185,129,.15);color:var(--success);font-family:monospace;letter-spacing:2px;font-size:12px">
+                                    <i class="fas fa-key" style="margin-right:4px"></i><?= esc($tok['token']) ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="badge badge-draft" style="font-size:11px"><i class="fas fa-key" style="margin-right:4px;opacity:.5"></i>No Token</span>
+                            <?php endif; ?>
+                            <!-- Jumlah peserta -->
+                            <span class="badge badge-selesai" style="font-size:11px"><i class="fas fa-users" style="margin-right:4px"></i><?= $jmlP ?> Peserta</span>
+                        </div>
+                    </td>
+                    <td>
                         <div style="display:flex;gap:6px;flex-wrap:wrap">
                             <a href="<?= base_url('exam/subjects/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Kelola Mapel"><i class="fas fa-list"></i> Mapel</a>
                             <a href="<?= base_url('participant/'.$e['id']) ?>" class="btn btn-sm btn-primary" title="Kelola Peserta"><i class="fas fa-users"></i> Peserta</a>
-                            <a href="<?= base_url('dashboard/monitoring/'.$e['id']) ?>" class="btn btn-sm btn-warning" title="Live Monitoring Moodle"><i class="fas fa-desktop"></i> Monitor</a>
+                            <a href="<?= base_url('dashboard/monitoring/'.$e['id']) ?>" class="btn btn-sm btn-warning" title="Live Monitoring"><i class="fas fa-desktop"></i> Monitor</a>
                             <a href="<?= base_url('grade/'.$e['id']) ?>" class="btn btn-sm btn-success" title="Rekap Nilai"><i class="fas fa-chart-bar"></i> Nilai</a>
                         </div>
                     </td>
@@ -108,7 +128,7 @@
                 <?php endforeach; ?>
                 <?php if (empty($exams_recent)): ?>
                 <tr>
-                    <td colspan="5" style="text-align:center;padding:40px;color:var(--muted)">
+                    <td colspan="6" style="text-align:center;padding:40px;color:var(--muted)">
                         <i class="fas fa-clipboard" style="font-size:32px;opacity:0.3;margin-bottom:8px;display:block"></i>
                         Belum ada data ujian. <a href="<?= base_url('exam/create') ?>" style="color:var(--accent);font-weight:600">Buat ujian pertama</a>
                     </td>

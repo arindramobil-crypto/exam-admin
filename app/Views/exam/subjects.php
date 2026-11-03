@@ -49,7 +49,7 @@
                             <a href="<?= base_url('participant/'.$exam['id']) ?>" class="btn btn-sm btn-outline" title="Kelola Peserta">
                                 <i class="fas fa-users"></i>
                             </a>
-                            <a href="<?= base_url('exam/subjects/delete/'.$s['id']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Yakin ingin menghapus mapel ini?')" title="Hapus Mapel">
+                            <a href="<?= base_url('exam/subjects/delete/'.$s['id']) ?>" class="btn btn-sm btn-danger" onclick="event.preventDefault(); showConfirm('<?= base_url('exam/subjects/delete/'.$s['id']) ?>', 'Hapus Mata Pelajaran', 'Yakin ingin menghapus mata pelajaran <?= esc(addslashes($s['nama_mapel'])) ?>?', 'btn-danger')" title="Hapus Mapel">
                                 <i class="fas fa-trash"></i>
                             </a>
                         </div>

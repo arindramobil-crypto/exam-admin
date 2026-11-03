@@ -168,14 +168,14 @@ body {
         <span><?= !empty($subject) ? esc($subject['nama_mapel']) . ' (Kelas ' . esc($subject['kelas']) . ')' : esc($exam['nama_ujian']) ?></span>
     </div>
 
-    <div class="token-container">
+    <div class="token-container" id="tokenContainer">
         <div class="token-label">TOKEN MASUK UJIAN</div>
-        <div class="token-box" id="tokenDisplay"><?= !empty($activeToken) && $activeToken['is_active'] ? esc($activeToken['token']) : '------' ?></div>
+        <div class="token-box" id="tokenDisplay"><?= !empty($activeToken) && $activeToken['is_active'] ? esc($activeToken['token']) : '- - - - - -' ?></div>
     </div>
 
     <div class="countdown-box" id="countdownContainer">
         <i class="fas fa-hourglass-half" style="color:#f59e0b"></i>
-        <span>Masa Berlaku Token: <strong class="countdown-timer" id="countdown">--:--</strong></span>
+        <span id="countdownLabel">Masa Berlaku Token:</span>&nbsp;<strong class="countdown-timer" id="countdown">--:--</strong>
     </div>
 </div>
 
@@ -202,17 +202,32 @@ updateClock();
 
 // Token & Countdown Polling
 var remainingSeconds = 0;
+var tokenActive = false;
+
 function pollToken() {
     fetch('<?= base_url('token/get-active-json/' . $exam['id']) ?>')
         .then(res => res.json())
         .then(data => {
-            var display = document.getElementById('tokenDisplay');
-            if (data.is_active && data.token !== '-') {
+            var display  = document.getElementById('tokenDisplay');
+            var container = document.getElementById('tokenContainer');
+            var cdBox    = document.getElementById('countdownContainer');
+
+            tokenActive = data.is_active && data.token && data.token !== '-';
+
+            if (tokenActive) {
                 display.innerText = data.token;
-                remainingSeconds = data.remaining;
+                remainingSeconds  = parseInt(data.remaining) || 0;
+                container.style.borderColor  = 'rgba(99,102,241,0.5)';
+                container.style.boxShadow    = '0 0 100px rgba(99,102,241,0.25), inset 0 0 40px rgba(99,102,241,0.1)';
+                display.style.opacity = '1';
+                cdBox.style.display  = 'flex';
             } else {
-                display.innerText = '------';
-                remainingSeconds = 0;
+                display.innerText = '- - - - - -';
+                remainingSeconds  = 0;
+                container.style.borderColor  = 'rgba(239,68,68,0.3)';
+                container.style.boxShadow    = '0 0 60px rgba(239,68,68,0.1)';
+                display.style.opacity = '0.35';
+                cdBox.style.display  = 'flex';
             }
             updateCountdownText();
         })
@@ -220,24 +235,45 @@ function pollToken() {
 }
 
 function updateCountdownText() {
-    var timerEl = document.getElementById('countdown');
+    var timerEl  = document.getElementById('countdown');
+    var labelEl  = document.getElementById('countdownLabel');
+
+    if (!tokenActive) {
+        timerEl.innerText  = '--:--';
+        timerEl.style.color = '#ef4444';
+        if (labelEl) labelEl.innerText = 'Token tidak aktif';
+        return;
+    }
     if (remainingSeconds > 0) {
         var m = Math.floor(remainingSeconds / 60);
         var s = remainingSeconds % 60;
-        timerEl.innerText = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+        timerEl.innerText   = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        // Warna sesuai sisa waktu
+        if (remainingSeconds <= 60) {
+            timerEl.style.color = '#ef4444'; // merah: < 1 menit
+        } else if (remainingSeconds <= 300) {
+            timerEl.style.color = '#f59e0b'; // kuning: < 5 menit
+        } else {
+            timerEl.style.color = '#10b981'; // hijau: aman
+        }
+        if (labelEl) labelEl.innerText = 'Masa Berlaku Token:';
     } else {
-        timerEl.innerText = '00:00 (Kedaluwarsa)';
+        timerEl.innerText   = 'KEDALUWARSA';
+        timerEl.style.color = '#ef4444';
+        if (labelEl) labelEl.innerText = 'Token sudah berakhir';
     }
 }
 
+// Hitung mundur lokal setiap detik
 setInterval(function() {
-    if (remainingSeconds > 0) {
+    if (tokenActive && remainingSeconds > 0) {
         remainingSeconds--;
         updateCountdownText();
     }
 }, 1000);
 
-setInterval(pollToken, 5000);
+// Sinkron dengan server setiap 8 detik
+setInterval(pollToken, 8000);
 pollToken();
 
 function toggleFullscreen() {

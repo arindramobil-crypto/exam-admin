@@ -58,6 +58,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('attendance/print/(:num)', 'Attendance::print/$1');
     $routes->get('attendance/print/(:num)/(:num)', 'Attendance::print/$1/$2');
     $routes->get('attendance/print/(:num)/(:num)/(:num)', 'Attendance::print/$1/$2/$3');
+    $routes->get('attendance/export-excel/(:num)', 'Attendance::exportExcel/$1');
 
     // Minutes (Berita Acara)
     $routes->get('minutes/(:num)', 'Minutes::index/$1');
@@ -67,6 +68,8 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
 
     // Grades
     $routes->get('grade/(:num)', 'Grade::index/$1');
+    $routes->get('grade/summary/(:num)', 'Grade::summary/$1');
+    $routes->get('grade/export-summary-excel/(:num)', 'Grade::exportSummaryExcel/$1');
     $routes->get('grade/view/(:num)/(:num)', 'Grade::view/$1/$2');
     $routes->get('grade/export-excel/(:num)/(:num)', 'Grade::exportExcel/$1/$2');
     $routes->get('grade/export-pdf/(:num)/(:num)', 'Grade::exportPdf/$1/$2');
@@ -101,4 +104,12 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     // Settings (School Profile, Logo & Kop Surat)
     $routes->get('setting', 'Setting::index');
     $routes->post('setting/save', 'Setting::save');
+
+    // Admin & Operator Users Management
+    $routes->get('user', 'User::index');
+    $routes->get('user/create', 'User::create');
+    $routes->post('user/store', 'User::store');
+    $routes->get('user/edit/(:num)', 'User::edit/$1');
+    $routes->post('user/update/(:num)', 'User::update/$1');
+    $routes->get('user/delete/(:num)', 'User::delete/$1');
 });

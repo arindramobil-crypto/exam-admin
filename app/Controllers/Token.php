@@ -24,7 +24,7 @@ class Token extends BaseController
 
         $subjects = (new ExamSubjectModel())->where('exam_id', $examId)->findAll();
         $activeToken = $this->tokenModel->getActiveToken($examId);
-        $recentTokens = $this->tokenModel->where('exam_id', $examId)->orderBy('id', 'DESC')->limit(10)->findAll();
+        $recentTokens = $this->tokenModel->getTokenHistoryWithDetails($examId, 25);
 
         return view('token/index', [
             'title'        => 'Rilis Token CBT',

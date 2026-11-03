@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use App\Models\{ExamModel, ExamSubjectModel, ParticipantModel, AttendanceModel, RoomModel, SettingModel};
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Mpdf\Mpdf;
 
 class Attendance extends BaseController
@@ -187,5 +189,106 @@ class Attendance extends BaseController
 
         // Return web printable preview
         return view('attendance/print_daftar_hadir', compact('exam', 'subject', 'room', 'roomsMap', 'participants', 'settings', 'selectedSesi', 'selectedSubjectId', 'selectedRoomId'));
+    }
+
+    /**
+     * Export Attendance to Excel (.xlsx)
+     */
+    public function exportExcel(int $examId)
+    {
+        $exam = (new ExamModel())->find($examId);
+        if (!$exam) {
+            return redirect()->to(base_url('attendance'))->with('error', 'Ujian tidak ditemukan!');
+        }
+
+        $selectedSubjectId = (int)$this->request->getGet('subject_id');
+        $selectedRoomId    = (int)$this->request->getGet('room_id');
+        $selectedSesi      = (int)$this->request->getGet('sesi');
+
+        $subject = $selectedSubjectId ? (new ExamSubjectModel())->find($selectedSubjectId) : null;
+        $room    = $selectedRoomId ? (new RoomModel())->find($selectedRoomId) : null;
+        $rooms   = (new RoomModel())->findAll();
+        $roomsMap = array_column($rooms, 'nama_ruang', 'id');
+
+        $pModel = new ParticipantModel();
+        $q = $pModel->where('exam_id', $examId);
+
+        if ($selectedSubjectId > 0) {
+            $hasSubP = (new ParticipantModel())->where('exam_id', $examId)->where('subject_id', $selectedSubjectId)->countAllResults();
+            if ($hasSubP > 0) {
+                $q->where('subject_id', $selectedSubjectId);
+            }
+        }
+        if ($selectedRoomId > 0) {
+            $q->where('room_id', $selectedRoomId);
+        }
+        if ($selectedSesi > 0) {
+            $q->where('sesi', $selectedSesi);
+        }
+
+        $participants = $q->orderBy('room_id', 'ASC')->orderBy('sesi', 'ASC')->orderBy('nomor_meja', 'ASC')->orderBy('nomor_peserta', 'ASC')->findAll();
+
+        $aModel = new AttendanceModel();
+        $aQuery = $aModel->where('exam_id', $examId);
+        if ($selectedSubjectId > 0) {
+            $aQuery->where('subject_id', $selectedSubjectId);
+        }
+        $rows = $aQuery->findAll();
+        $attendances = [];
+        foreach ($rows as $r) {
+            $attendances[$r['participant_id']] = $r;
+        }
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Daftar Hadir');
+
+        $sheet->setCellValue('A1', 'DAFTAR HADIR PESERTA UJIAN');
+        $sheet->setCellValue('A2', strtoupper($exam['nama_ujian']) . ($subject ? ' - ' . strtoupper($subject['nama_mapel']) : ''));
+        $sheet->setCellValue('A3', ($room ? 'Ruang: ' . $room['nama_ruang'] . ' | ' : '') . ($selectedSesi ? 'Sesi: ' . $selectedSesi : 'Semua Sesi'));
+
+        $sheet->mergeCells('A1:J1');
+        $sheet->mergeCells('A2:J2');
+        $sheet->mergeCells('A3:J3');
+
+        $headers = ['No', 'No. Peserta', 'NIS / Username', 'Nama Siswa', 'Kelas', 'Ruang', 'Sesi', 'No. Meja', 'Status Kehadiran', 'Jam Absen'];
+        foreach ($headers as $i => $h) {
+            $sheet->setCellValue([$i + 1, 5], $h);
+        }
+
+        $statusLabels = [
+            'hadir' => 'HADIR',
+            'sakit' => 'SAKIT',
+            'izin'  => 'IZIN',
+            'alpa'  => 'ALPA',
+        ];
+
+        foreach ($participants as $r => $p) {
+            $row = $r + 6;
+            $att = $attendances[$p['id']] ?? null;
+            $statusRaw = $att['status'] ?? '';
+            $statusText = $statusLabels[$statusRaw] ?? 'BELUM ABSEN';
+            $jamAbsen   = $att['jam_absen'] ?? '-';
+            $namaRuang  = $roomsMap[$p['room_id']] ?? '-';
+
+            $sheet->setCellValue([1, $row], $r + 1);
+            $sheet->setCellValue([2, $row], $p['nomor_peserta']);
+            $sheet->setCellValue([3, $row], $p['nis'] ?: '-');
+            $sheet->setCellValue([4, $row], $p['nama']);
+            $sheet->setCellValue([5, $row], $p['kelas']);
+            $sheet->setCellValue([6, $row], $namaRuang);
+            $sheet->setCellValue([7, $row], $p['sesi'] ?? 1);
+            $sheet->setCellValue([8, $row], $p['nomor_meja'] ?? '-');
+            $sheet->setCellValue([9, $row], $statusText);
+            $sheet->setCellValue([10, $row], $jamAbsen);
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $filename = 'Daftar_Hadir_' . preg_replace('/[^A-Za-z0-9_]/', '_', $exam['nama_ujian']) . '.xlsx';
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        $writer->save('php://output');
+        exit;
     }
 }

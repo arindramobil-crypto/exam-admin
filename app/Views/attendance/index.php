@@ -20,6 +20,9 @@
         <a href="<?= base_url('attendance/print/' . $exam['id'] . '?' . $printUrlParams . '&export=pdf') ?>" target="_blank" class="btn btn-success">
             <i class="fas fa-file-pdf"></i> Download PDF
         </a>
+        <a href="<?= base_url('attendance/export-excel/' . $exam['id'] . '?' . $printUrlParams) ?>" class="btn btn-outline" style="color:var(--success);border-color:rgba(16,185,129,0.3)">
+            <i class="fas fa-file-excel"></i> Export Excel
+        </a>
         <a href="<?= base_url('exam') ?>" class="btn btn-outline"><i class="fas fa-arrow-left"></i> Kembali</a>
     </div>
 </div>

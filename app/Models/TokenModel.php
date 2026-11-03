@@ -30,9 +30,14 @@ class TokenModel extends Model
         }
         $q->set(['is_active' => 0])->update();
 
-        // 6 uppercase letters for clean CBT token (excluding confusing I, O, 0, 1)
+        // 6 uppercase chars — cryptographically secure, excludes confusing chars (I, O, 0, 1)
         $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        $tokenStr = substr(str_shuffle($chars), 0, 6);
+        $charLen = strlen($chars);
+        $tokenStr = '';
+        $bytes = random_bytes(12); // extra bytes for better distribution
+        for ($i = 0; $i < 6; $i++) {
+            $tokenStr .= $chars[ord($bytes[$i]) % $charLen];
+        }
 
         $now = time();
         $expiresAt = date('Y-m-d H:i:s', $now + ($durasiMenit * 60));
@@ -135,5 +140,19 @@ class TokenModel extends Model
         } catch (Throwable $e) {
             log_message('error', 'TokenModel::clearMoodleQuizPassword error: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Get audit trail of token generation with details of admin and subject
+     */
+    public function getTokenHistoryWithDetails(int $examId, int $limit = 25): array
+    {
+        return $this->select('exam_tokens.*, admin_users.nama as pembuat, admin_users.username as pembuat_username, exam_subjects.nama_mapel, exam_subjects.kelas')
+            ->join('admin_users', 'admin_users.id = exam_tokens.created_by', 'left')
+            ->join('exam_subjects', 'exam_subjects.id = exam_tokens.subject_id', 'left')
+            ->where('exam_tokens.exam_id', $examId)
+            ->orderBy('exam_tokens.id', 'DESC')
+            ->limit($limit)
+            ->findAll();
     }
 }

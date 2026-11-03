@@ -36,7 +36,7 @@
                         Berlaku hingga: <strong style="color:var(--warning)"><?= date('H:i:s (d M Y)', strtotime($activeToken['expires_at'])) ?></strong>
                     </p>
                     <div style="margin-top:20px;display:flex;justify-content:center;gap:10px">
-                        <a href="<?= base_url('token/deactivate/'.$activeToken['id']) ?>" class="btn btn-danger" onclick="return confirm('Nonaktifkan token ini?')">
+                        <a href="<?= base_url('token/deactivate/'.$activeToken['id']) ?>" class="btn btn-danger" onclick="event.preventDefault(); showConfirm('<?= base_url('token/deactivate/'.$activeToken['id']) ?>', 'Nonaktifkan Token CBT', 'Apakah Anda yakin ingin menonaktifkan token ini? Password kuis di Moodle akan dibersihkan.', 'btn-danger')">
                             <i class="fas fa-stop-circle"></i> Hentikan / Nonaktifkan
                         </a>
                         <a href="<?= base_url('token/display/'.$exam['id']) ?>" target="_blank" class="btn btn-primary">
@@ -100,7 +100,8 @@
                         <thead>
                             <tr>
                                 <th>Token</th>
-                                <th>Durasi</th>
+                                <th>Mapel</th>
+                                <th>Dirilis Oleh</th>
                                 <th>Waktu Rilis</th>
                                 <th>Kedaluwarsa</th>
                                 <th>Status</th>
@@ -110,16 +111,26 @@
                             <?php foreach($recentTokens as $t): ?>
                             <tr>
                                 <td>
-                                    <strong style="font-family:'Courier New', monospace;font-size:15px;color:var(--accent)">
+                                    <strong style="font-family:'Courier New', monospace;font-size:15px;color:var(--accent);letter-spacing:1px">
                                         <?= esc($t['token']) ?>
                                     </strong>
                                 </td>
-                                <td><?= $t['durasi_menit'] ?> Menit</td>
-                                <td><?= date('H:i (d/m)', strtotime($t['created_at'])) ?></td>
-                                <td><?= date('H:i (d/m)', strtotime($t['expires_at'])) ?></td>
+                                <td>
+                                    <?php if(!empty($t['nama_mapel'])): ?>
+                                        <span style="font-size:12px"><?= esc($t['nama_mapel']) ?></span>
+                                        <small style="color:var(--muted);display:block"><?= esc($t['kelas']) ?></small>
+                                    <?php else: ?>
+                                        <span class="badge badge-draft" style="font-size:10px">Semua Mapel</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <span style="font-size:12px;color:#fff"><?= esc($t['pembuat'] ?: ($t['pembuat_username'] ?: 'Admin')) ?></span>
+                                </td>
+                                <td><small><?= date('H:i (d/m)', strtotime($t['created_at'])) ?></small></td>
+                                <td><small><?= date('H:i (d/m)', strtotime($t['expires_at'])) ?></small></td>
                                 <td>
                                     <?php if($t['is_active'] && strtotime($t['expires_at']) > time()): ?>
-                                        <span class="badge badge-aktif">Aktif</span>
+                                        <span class="badge badge-aktif"><i class="fas fa-check" style="margin-right:3px"></i> Aktif</span>
                                     <?php else: ?>
                                         <span class="badge badge-draft">Kedaluwarsa</span>
                                     <?php endif; ?>
@@ -128,7 +139,7 @@
                             <?php endforeach; ?>
                             <?php if(empty($recentTokens)): ?>
                             <tr>
-                                <td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Belum ada riwayat token.</td>
+                                <td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">Belum ada riwayat log rilis token.</td>
                             </tr>
                             <?php endif; ?>
                         </tbody>

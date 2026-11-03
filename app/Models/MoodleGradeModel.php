@@ -11,10 +11,21 @@ class MoodleGradeModel extends Model
     protected $primaryKey = 'id';
     protected $DBGroup    = 'moodle';
 
+    /**
+     * Normalize a raw Moodle grade to a 0–100 scale.
+     * Moodle stores grades relative to quiz maxgrade, so we scale accordingly.
+     */
+    private function normalizeGrade(?float $grade, ?float $maxgrade): ?float
+    {
+        if ($grade === null) return null;
+        if ($maxgrade === null || $maxgrade <= 0) return round($grade, 2);
+        return round(($grade / $maxgrade) * 100, 2);
+    }
+
     public function getGradesByQuiz(int $quizId): array
     {
         try {
-            return $this->db->table('quiz_grades qg')
+            $rows = $this->db->table('quiz_grades qg')
                 ->select('u.id as user_id, u.firstname, u.lastname, u.username, u.idnumber, u.email, qg.grade, qg.timemodified, q.grade as maxgrade, q.name as quiz_name')
                 ->join('user u', 'u.id = qg.userid')
                 ->join('quiz q', 'q.id = qg.quiz')
@@ -23,6 +34,16 @@ class MoodleGradeModel extends Model
                 ->orderBy('u.lastname', 'ASC')
                 ->orderBy('u.firstname', 'ASC')
                 ->get()->getResultArray();
+
+            // Normalize each grade to 0-100 scale
+            foreach ($rows as &$row) {
+                $row['grade_raw']    = $row['grade'];
+                $row['grade']        = $this->normalizeGrade(
+                    $row['grade'] !== null ? (float)$row['grade'] : null,
+                    $row['maxgrade'] !== null ? (float)$row['maxgrade'] : null
+                );
+            }
+            return $rows;
         } catch (Throwable $e) {
             log_message('error', 'MoodleGradeModel::getGradesByQuiz failed: ' . $e->getMessage());
             return [];

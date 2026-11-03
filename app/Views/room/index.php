@@ -9,7 +9,7 @@
 <td><?= esc($r['gedung']) ?></td>
 <td><?= esc($r['lantai']) ?></td>
 <td><?= esc($r['kapasitas']) ?> Kursi</td>
-<td><a href="<?= base_url('room/edit/'.$r['id']) ?>" class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></a> <a href="<?= base_url('room/delete/'.$r['id']) ?>" class="btn btn-sm btn-danger" onclick="return confirm('Hapus ruang?')"><i class="fas fa-trash"></i></a></td>
+<td><a href="<?= base_url('room/edit/'.$r['id']) ?>" class="btn btn-sm btn-outline"><i class="fas fa-edit"></i></a> <a href="<?= base_url('room/delete/'.$r['id']) ?>" class="btn btn-sm btn-danger" onclick="event.preventDefault(); showConfirm('<?= base_url('room/delete/'.$r['id']) ?>', 'Hapus Ruangan', 'Yakin ingin menghapus ruangan <?= esc(addslashes($r['nama_ruang'])) ?>?', 'btn-danger')"><i class="fas fa-trash"></i></a></td>
 </tr><?php endforeach ?>
 <?php if(empty($rooms)): ?><tr><td colspan="6" style="text-align:center;padding:30px">Data ruang kosong.</td></tr><?php endif ?>
 </tbody></table></div></div>
