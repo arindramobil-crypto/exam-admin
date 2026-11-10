@@ -78,6 +78,9 @@
                             <a href="<?= base_url('attendance/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Daftar Hadir Ujian">
                                 <i class="fas fa-check-square"></i> Hadir
                             </a>
+                            <a href="<?= base_url('room/denah/'.$e['id']) ?>" class="btn btn-sm btn-outline" style="color:var(--accent);border-color:rgba(99,102,241,0.3)" title="Denah Meja Ruangan">
+                                <i class="fas fa-th-large"></i> Denah
+                            </a>
                             <a href="<?= base_url('minutes/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Berita Acara">
                                 <i class="fas fa-file-alt"></i> BA
                             </a>

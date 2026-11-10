@@ -47,6 +47,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('room/edit/(:num)', 'Room::edit/$1');
     $routes->post('room/update/(:num)', 'Room::update/$1');
     $routes->get('room/delete/(:num)', 'Room::delete/$1');
+    $routes->get('room/denah/(:num)', 'Room::denah/$1');
     $routes->get('room/denah/(:num)/(:num)', 'Room::denah/$1/$2');
 
     // Attendance
@@ -91,6 +92,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('analysis/(:num)', 'Analysis::index/$1');
     $routes->get('analysis/detail/(:num)/(:num)', 'Analysis::detail/$1/$2');
     $routes->get('analysis/export-excel/(:num)/(:num)', 'Analysis::exportExcel/$1/$2');
+    $routes->get('analysis/export-pdf/(:num)/(:num)', 'Analysis::exportPdf/$1/$2');
 
     // Moodle Integration
     $routes->get('moodle', 'Moodle::index');

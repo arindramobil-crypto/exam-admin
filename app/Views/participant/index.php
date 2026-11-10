@@ -12,6 +12,9 @@
         <a href="<?= base_url('participant/print-kartu-meja/'.$exam['id']) ?>" target="_blank" class="btn btn-warning" style="color:#000;font-weight:600">
             <i class="fas fa-tags"></i> Cetak Kartu Meja
         </a>
+        <a href="<?= base_url('room/denah/'.$exam['id']) ?>" target="_blank" class="btn btn-outline" style="color:var(--accent);border-color:rgba(99,102,241,0.4)">
+            <i class="fas fa-th-large"></i> Denah Tempat Duduk
+        </a>
         <a href="<?= base_url('participant/export-excel/'.$exam['id']) ?>" class="btn btn-success">
             <i class="fas fa-file-excel"></i> Export Excel
         </a>

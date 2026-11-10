@@ -36,9 +36,17 @@
                     </td>
                     <td>
                         <?php if($s['moodle_quiz_id']): ?>
-                            <a href="<?= base_url('analysis/detail/'.$exam['id'].'/'.$s['id']) ?>" class="btn btn-sm btn-primary">
-                                <i class="fas fa-chart-pie"></i> Lihat Analisis Butir Soal
-                            </a>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                <a href="<?= base_url('analysis/detail/'.$exam['id'].'/'.$s['id']) ?>" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-chart-pie"></i> Lihat Analisis
+                                </a>
+                                <a href="<?= base_url('analysis/export-pdf/'.$exam['id'].'/'.$s['id']) ?>" target="_blank" class="btn btn-sm btn-danger" style="background:#dc2626;border-color:#b91c1c" title="Download PDF">
+                                    <i class="fas fa-file-pdf"></i> PDF
+                                </a>
+                                <a href="<?= base_url('analysis/export-excel/'.$exam['id'].'/'.$s['id']) ?>" class="btn btn-sm btn-success" title="Export Excel">
+                                    <i class="fas fa-file-excel"></i> Excel
+                                </a>
+                            </div>
                         <?php else: ?>
                             <span style="color:var(--muted);font-size:12px">Tautkan Quiz Moodle terlebih dahulu</span>
                         <?php endif; ?>
