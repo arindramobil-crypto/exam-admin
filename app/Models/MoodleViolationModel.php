@@ -83,10 +83,10 @@ class MoodleViolationModel extends Model
                     $stats[$uid]['is_locked']   = true;
                     $stats[$uid]['is_unlocked'] = false;
                     $stats[$uid]['total_violations'] = max($stats[$uid]['total_violations'], 3);
-                } elseif ($log['action'] === 'unlocked') {
+                } elseif ($log['action'] === 'unlocked' || $log['action'] === 'remote_unlocked') {
                     $stats[$uid]['is_locked']   = false;
                     $stats[$uid]['is_unlocked'] = true;
-                    // Reset to 2 after unlock
+                    // Reset to 2 after unlock (giving student 1 final chance)
                     $stats[$uid]['total_violations'] = 2;
                 } elseif (strpos($log['action'], 'warning') !== false) {
                     $stats[$uid]['total_violations'] = (int)$log['violation_count'];
@@ -98,4 +98,29 @@ class MoodleViolationModel extends Model
             return [];
         }
     }
+
+    /**
+     * Unlock a student remotely from the exam-admin dashboard
+     */
+    public function remoteUnlock(int $quizId, int $userId, string $adminName = 'Admin'): bool
+    {
+        try {
+            $data = [
+                'userid'          => $userId,
+                'quizid'          => $quizId,
+                'attemptid'       => 0,
+                'action'          => 'remote_unlocked',
+                'violation_count' => 2,
+                'reason'          => 'Dibuka jarak jauh oleh Pengawas (' . $adminName . ') dari Dashboard',
+                'device_type'     => 'Server/Dashboard',
+                'ip_address'      => service('request')->getIPAddress() ?: '127.0.0.1',
+                'timecreated'     => time(),
+            ];
+            return (bool)$this->insert($data);
+        } catch (Throwable $e) {
+            log_message('error', 'MoodleViolationModel::remoteUnlock failed: ' . $e->getMessage());
+            return false;
+        }
+    }
 }
+

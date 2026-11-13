@@ -14,6 +14,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     // Dashboard
     $routes->get('dashboard', 'Dashboard::index');
     $routes->get('dashboard/monitoring/(:num)', 'Dashboard::monitoring/$1');
+    $routes->post('dashboard/remote-unlock/(:num)', 'Dashboard::remoteUnlock/$1');
 
     // Exam
     $routes->get('exam', 'Exam::index');

@@ -99,4 +99,40 @@ class Dashboard extends BaseController
             'activeToken'      => $activeToken,
         ]);
     }
+
+    /**
+     * Remote unlock a locked student directly from the admin dashboard
+     */
+    public function remoteUnlock(int $examId)
+    {
+        $quizId    = (int)$this->request->getPost('quiz_id');
+        $userId    = (int)$this->request->getPost('user_id');
+        $userName  = trim((string)($this->request->getPost('student_name') ?: 'Siswa'));
+
+        if ($quizId <= 0 || $userId <= 0) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Parameter tidak valid.']);
+            }
+            return redirect()->to(base_url('dashboard/monitoring/' . $examId))->with('error', 'Parameter tidak valid.');
+        }
+
+        $adminName = session()->get('nama') ?: (session()->get('username') ?: 'Admin');
+
+        $violationModel = new MoodleViolationModel();
+        $ok = $violationModel->remoteUnlock($quizId, $userId, $adminName);
+
+        if ($this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => $ok,
+                'message' => $ok ? "Kunci ujian untuk {$userName} berhasil dibuka kembali." : 'Gagal membuka kunci ujian.',
+            ]);
+        }
+
+        if ($ok) {
+            return redirect()->to(base_url('dashboard/monitoring/' . $examId))
+                ->with('success', "Kunci ujian untuk {$userName} berhasil dibuka kembali dari Dashboard.");
+        }
+        return redirect()->to(base_url('dashboard/monitoring/' . $examId))
+            ->with('error', "Gagal membuka kunci ujian untuk {$userName}.");
+    }
 }

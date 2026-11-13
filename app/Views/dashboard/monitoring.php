@@ -197,9 +197,14 @@
                                         </td>
                                         <td>
                                             <?php if(!empty($st) && !empty($st['is_locked'])): ?>
-                                                <span class="badge" style="background:#ef4444;color:#fff;font-weight:700;box-shadow:0 0 10px rgba(239,68,68,0.6)">
-                                                    <i class="fas fa-lock"></i> TERKUNCI (3x)
-                                                </span>
+                                                <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-start">
+                                                    <span class="badge" style="background:#ef4444;color:#fff;font-weight:700;box-shadow:0 0 10px rgba(239,68,68,0.6)">
+                                                        <i class="fas fa-lock"></i> TERKUNCI (3x)
+                                                    </span>
+                                                    <button type="button" class="btn btn-sm" style="background:#10b981;color:#fff;border:none;padding:3px 8px;font-size:11px;font-weight:600;border-radius:6px;cursor:pointer" onclick="remoteUnlockStudent(<?= (int)$sub['moodle_quiz_id'] ?>, <?= $uid ?>, '<?= esc($att['firstname'] . ' ' . $att['lastname']) ?>')">
+                                                        <i class="fas fa-key"></i> Buka Kunci
+                                                    </button>
+                                                </div>
                                             <?php elseif(!empty($st) && !empty($st['is_unlocked'])): ?>
                                                 <span class="badge" style="background:rgba(56,189,248,.18);color:#38bdf8">
                                                     <i class="fas fa-unlock"></i> Dibuka Proktor (2/3)
@@ -381,6 +386,36 @@ function filterTable(quizId, filter) {
         } else {
             row.style.display = 'none';
         }
+    });
+}
+
+// ─── Buka Kunci Siswa Jarak Jauh (Remote Unlock) ──────────────────────────────
+function remoteUnlockStudent(quizId, userId, studentName) {
+    if (!confirm('Apakah Anda yakin ingin membuka kunci ujian untuk siswa:\n' + studentName + '?\n\nSiswa akan diberikan 1 kesempatan toleransi terakhir.')) {
+        return;
+    }
+
+    var formData = new FormData();
+    formData.append('quiz_id', quizId);
+    formData.append('user_id', userId);
+    formData.append('student_name', studentName);
+
+    fetch('<?= base_url('dashboard/remote-unlock/' . $exam['id']) ?>', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        if (data && data.success) {
+            alert(data.message || 'Kunci ujian berhasil dibuka!');
+            window.location.reload();
+        } else {
+            alert('Gagal: ' + ((data && data.message) ? data.message : 'Terjadi kesalahan sistem.'));
+        }
+    })
+    .catch(function(err) {
+        alert('Terjadi kesalahan jaringan saat membuka kunci ujian.');
     });
 }
 </script>
