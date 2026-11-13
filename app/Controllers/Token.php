@@ -42,9 +42,9 @@ class Token extends BaseController
         $newPin = $this->request->getPost('proctor_pin');
         if (!empty($newPin)) {
             $this->tokenModel->setProctorPin($newPin);
-            return redirect()->to(base_url('token/' . $examId))->with('success', 'PIN Buka Kunci Pengawas berhasil diperbarui: ' . strtoupper(trim($newPin)));
+            return redirect()->back()->with('success', 'PIN Buka Kunci Pengawas berhasil diperbarui: ' . strtoupper(trim($newPin)));
         }
-        return redirect()->to(base_url('token/' . $examId))->with('error', 'PIN tidak boleh kosong.');
+        return redirect()->back()->with('error', 'PIN tidak boleh kosong.');
     }
 
     public function generate(int $examId)

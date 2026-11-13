@@ -84,9 +84,14 @@
             <div class="stat-value" style="color:#38bdf8"><?= $totalUnlocked ?></div>
             <i class="stat-icon fas fa-unlock-alt" style="color:#38bdf8"></i>
         </div>
-        <div class="stat-card" style="border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.05)">
-            <div class="stat-label" style="color:#10b981">PIN Pengawas (Buka Kunci)</div>
-            <div class="stat-value" style="color:#10b981;font-family:'Courier New',monospace;letter-spacing:2px;font-size:24px">
+        <div class="stat-card" style="border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.05);position:relative">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <div class="stat-label" style="color:#10b981;margin-bottom:0">PIN Pengawas (Buka Kunci)</div>
+                <button type="button" onclick="openProctorPinModal()" class="btn btn-sm" style="padding:2px 8px;font-size:11px;background:rgba(16,185,129,0.2);color:#10b981;border:1px solid rgba(16,185,129,0.4);border-radius:6px;cursor:pointer">
+                    <i class="fas fa-edit"></i> Ubah PIN
+                </button>
+            </div>
+            <div class="stat-value" style="color:#10b981;font-family:'Courier New',monospace;letter-spacing:2px;font-size:24px;margin-top:6px">
                 <?= esc($proctorPin) ?>
             </div>
             <i class="stat-icon fas fa-key" style="color:#10b981"></i>
@@ -418,6 +423,38 @@ function remoteUnlockStudent(quizId, userId, studentName) {
         alert('Terjadi kesalahan jaringan saat membuka kunci ujian.');
     });
 }
+
+function openProctorPinModal() {
+    var m = document.getElementById('modalProctorPin');
+    if (m) m.style.display = 'flex';
+}
+function closeProctorPinModal() {
+    var m = document.getElementById('modalProctorPin');
+    if (m) m.style.display = 'none';
+}
 </script>
+
+<!-- Modal Ubah PIN Pengawas -->
+<div id="modalProctorPin" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:99999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:var(--card-bg, #1e293b);border:1px solid var(--border, #334155);border-radius:14px;padding:24px;max-width:420px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.6)">
+        <h4 style="margin:0 0 10px;color:#fff;display:flex;align-items:center;gap:8px;font-size:17px">
+            <i class="fas fa-key" style="color:#10b981"></i> Ubah PIN Buka Kunci Pengawas
+        </h4>
+        <p style="color:var(--muted, #94a3b8);font-size:13px;margin:0 0 18px;line-height:1.5">
+            PIN ini digunakan oleh Pengawas Ruangan untuk membuka lembar ujian siswa yang terkunci akibat membuka tab/aplikasi lain. Berbeda dengan token soal.
+        </p>
+        <form action="<?= base_url('token/save-proctor-pin/'.$exam['id']) ?>" method="POST">
+            <?= csrf_field() ?>
+            <div class="form-group" style="margin-bottom:18px">
+                <label style="display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px">PIN Pengawas Baru (Min. 4 Karakter)</label>
+                <input type="text" name="proctor_pin" value="<?= esc($proctorPin) ?>" class="form-control" style="font-family:'Courier New',monospace;font-weight:700;letter-spacing:2px;text-transform:uppercase;font-size:16px" required autofocus>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+                <button type="button" onclick="closeProctorPinModal()" class="btn btn-sm btn-outline">Batal</button>
+                <button type="submit" class="btn btn-sm btn-success" style="background:#10b981;border:none"><i class="fas fa-save"></i> Simpan PIN Baru</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <?php echo view('layout/footer'); ?>
