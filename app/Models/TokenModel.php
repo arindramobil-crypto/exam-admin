@@ -155,4 +155,51 @@ class TokenModel extends Model
             ->limit($limit)
             ->findAll();
     }
+
+    /**
+     * Get Master Proctor Unlock PIN (separate from quiz token)
+     */
+    public function getProctorPin(): string
+    {
+        return (new SettingModel())->getVal('cbt_proctor_pin', 'PROKTOR123');
+    }
+
+    /**
+     * Save Master Proctor Unlock PIN and sync to Moodle config
+     */
+    public function setProctorPin(string $pin): bool
+    {
+        $cleanPin = strtoupper(trim($pin));
+        if (empty($cleanPin)) {
+            $cleanPin = 'PROKTOR123';
+        }
+
+        (new SettingModel())->setVal('cbt_proctor_pin', $cleanPin);
+
+        // Sync to Moodle mdl_config_plugins for local_cbt_kiosk
+        try {
+            $moodleDb = Database::connect('moodle', false);
+            if ($moodleDb) {
+                $existing = $moodleDb->table('config_plugins')
+                    ->where('plugin', 'local_cbt_kiosk')
+                    ->where('name', 'proctor_pin')
+                    ->get()->getRowArray();
+                if ($existing) {
+                    $moodleDb->table('config_plugins')
+                        ->where('id', $existing['id'])
+                        ->update(['value' => $cleanPin]);
+                } else {
+                    $moodleDb->table('config_plugins')->insert([
+                        'plugin' => 'local_cbt_kiosk',
+                        'name'   => 'proctor_pin',
+                        'value'  => $cleanPin,
+                    ]);
+                }
+            }
+        } catch (Throwable $e) {
+            log_message('error', 'TokenModel::setProctorPin sync to Moodle failed: ' . $e->getMessage());
+        }
+
+        return true;
+    }
 }

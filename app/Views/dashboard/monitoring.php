@@ -37,14 +37,14 @@
         </div>
     </div>
 <?php else: ?>
-    <!-- Ringkasan global semua mapel -->
+    <!-- Ringkasan global pengerjaan & Kiosk Anti-Cheat -->
     <?php
         $totalGlobal   = array_sum(array_column($monitoring, 'total'));
         $selesaiGlobal = array_sum(array_column($monitoring, 'selesai'));
         $belumGlobal   = array_sum(array_column($monitoring, 'belum'));
         $pctGlobal     = $totalGlobal > 0 ? round(($selesaiGlobal / $totalGlobal) * 100) : 0;
     ?>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px">
         <div class="stat-card">
             <div class="stat-label">Total Pengerjaan</div>
             <div class="stat-value"><?= $totalGlobal ?></div>
@@ -64,6 +64,32 @@
             <div class="stat-label">Penyelesaian Global</div>
             <div class="stat-value" style="color:var(--accent)"><?= $pctGlobal ?>%</div>
             <i class="stat-icon fas fa-chart-pie"></i>
+        </div>
+    </div>
+
+    <!-- Kiosk Anti-Cheat Live Stats & Proctor PIN -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px">
+        <div class="stat-card" style="border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.03)">
+            <div class="stat-label" style="color:#f87171">Pelanggaran Tab/Aplikasi</div>
+            <div class="stat-value" style="color:#ef4444"><?= $totalViolations ?></div>
+            <i class="stat-icon fas fa-exclamation-triangle" style="color:#ef4444"></i>
+        </div>
+        <div class="stat-card" style="border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.06)">
+            <div class="stat-label" style="color:#f87171">Siswa Terkunci Saat Ini</div>
+            <div class="stat-value" style="color:#ef4444"><?= $totalLocked ?></div>
+            <i class="stat-icon fas fa-lock" style="color:#ef4444"></i>
+        </div>
+        <div class="stat-card" style="border:1px solid rgba(56,189,248,0.3);background:rgba(56,189,248,0.03)">
+            <div class="stat-label" style="color:#38bdf8">Dibuka Kembali Pengawas</div>
+            <div class="stat-value" style="color:#38bdf8"><?= $totalUnlocked ?></div>
+            <i class="stat-icon fas fa-unlock-alt" style="color:#38bdf8"></i>
+        </div>
+        <div class="stat-card" style="border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.05)">
+            <div class="stat-label" style="color:#10b981">PIN Pengawas (Buka Kunci)</div>
+            <div class="stat-value" style="color:#10b981;font-family:'Courier New',monospace;letter-spacing:2px;font-size:24px">
+                <?= esc($proctorPin) ?>
+            </div>
+            <i class="stat-icon fas fa-key" style="color:#10b981"></i>
         </div>
     </div>
 
@@ -139,7 +165,8 @@
                                     <tr>
                                         <th>Nama Siswa</th>
                                         <th>Username</th>
-                                        <th>Status</th>
+                                        <th>Status Quiz</th>
+                                        <th>Status Kiosk</th>
                                         <th>Waktu Mulai</th>
                                         <th>Waktu Selesai</th>
                                         <th>Nilai</th>
@@ -147,6 +174,10 @@
                                 </thead>
                                 <tbody>
                                     <?php foreach($m['attempts'] as $att): ?>
+                                    <?php
+                                        $uid = (int)$att['user_id'];
+                                        $st  = $violationStats[$uid] ?? null;
+                                    ?>
                                     <tr data-state="<?= esc($att['state']) ?>">
                                         <td><strong><?= esc($att['firstname'] . ' ' . $att['lastname']) ?></strong></td>
                                         <td>
@@ -162,6 +193,30 @@
                                                 <span class="badge" style="background:rgba(245,158,11,.15);color:var(--warning)"><i class="fas fa-spinner fa-spin" style="margin-right:4px"></i>Mengerjakan</span>
                                             <?php else: ?>
                                                 <span class="badge badge-draft"><?= esc(ucfirst($att['state'])) ?></span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?php if(!empty($st) && !empty($st['is_locked'])): ?>
+                                                <span class="badge" style="background:#ef4444;color:#fff;font-weight:700;box-shadow:0 0 10px rgba(239,68,68,0.6)">
+                                                    <i class="fas fa-lock"></i> TERKUNCI (3x)
+                                                </span>
+                                            <?php elseif(!empty($st) && !empty($st['is_unlocked'])): ?>
+                                                <span class="badge" style="background:rgba(56,189,248,.18);color:#38bdf8">
+                                                    <i class="fas fa-unlock"></i> Dibuka Proktor (2/3)
+                                                </span>
+                                            <?php elseif(!empty($st) && !empty($st['total_violations'])): ?>
+                                                <span class="badge" style="background:rgba(245,158,11,.18);color:#f59e0b">
+                                                    <i class="fas fa-exclamation-triangle"></i> <?= $st['total_violations'] ?>x Peringatan
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="badge" style="background:rgba(16,185,129,.15);color:#10b981">
+                                                    <i class="fas fa-shield-alt"></i> Aman (0)
+                                                </span>
+                                            <?php endif; ?>
+                                            <?php if(!empty($st['last_device'])): ?>
+                                                <small style="color:var(--muted);display:block;margin-top:2px;font-size:10px">
+                                                    <?= esc($st['last_device']) ?>
+                                                </small>
                                             <?php endif; ?>
                                         </td>
                                         <td><small><?= $att['timestart'] ? date('H:i:s', $att['timestart']) : '-' ?></small></td>
@@ -191,6 +246,82 @@
                 </div>
             </div>
         <?php endforeach; ?>
+    </div>
+
+    <!-- Real-time Violation Audit Log Card -->
+    <div class="card" style="margin-top:24px;border:1px solid rgba(239,68,68,0.3)">
+        <div class="card-header" style="background:rgba(239,68,68,0.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div>
+                <span class="card-title" style="color:#f87171">
+                    <i class="fas fa-history" style="margin-right:6px"></i> Log Audit Pelanggaran Kiosk Real-Time (Tab-Switch)
+                </span>
+                <span class="badge badge-draft" style="margin-left:8px"><?= count($recentViolations) ?> Aktivitas Terakhir</span>
+            </div>
+            <div style="font-size:12px;color:var(--muted)">
+                PIN Buka Kunci Pengawas: <strong style="color:#10b981;font-family:monospace;letter-spacing:1px"><?= esc($proctorPin) ?></strong>
+            </div>
+        </div>
+        <div class="card-body">
+            <?php if(empty($recentViolations)): ?>
+                <div style="text-align:center;padding:30px;color:var(--muted)">
+                    <i class="fas fa-shield-alt" style="font-size:36px;color:#10b981;opacity:0.4;margin-bottom:10px;display:block"></i>
+                    Belum ada pelanggaran tab atau aplikasi yang tercatat pada sesi ujian ini.
+                </div>
+            <?php else: ?>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Waktu</th>
+                                <th>Siswa</th>
+                                <th>Username</th>
+                                <th>Mapel / Quiz</th>
+                                <th>Kejadian</th>
+                                <th>Detail Pelanggaran</th>
+                                <th>Perangkat</th>
+                                <th>IP Address</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach($recentViolations as $v): ?>
+                            <tr>
+                                <td><small style="color:var(--muted)"><?= date('H:i:s (d/m)', $v['timecreated']) ?></small></td>
+                                <td><strong><?= esc($v['firstname'] . ' ' . $v['lastname']) ?></strong></td>
+                                <td><code><?= esc($v['username']) ?></code></td>
+                                <td><small><?= esc($v['quiz_name'] ?: 'Quiz #' . $v['quizid']) ?></small></td>
+                                <td>
+                                    <?php if($v['action'] === 'locked'): ?>
+                                        <span class="badge" style="background:#ef4444;color:#fff;font-weight:700">
+                                            <i class="fas fa-lock"></i> TERKUNCI (3x)
+                                        </span>
+                                    <?php elseif($v['action'] === 'unlocked'): ?>
+                                        <span class="badge" style="background:#0284c7;color:#fff;font-weight:700">
+                                            <i class="fas fa-unlock"></i> DIBUKA PENGAWAS
+                                        </span>
+                                    <?php elseif($v['action'] === 'warning_2'): ?>
+                                        <span class="badge" style="background:rgba(245,158,11,0.2);color:#f59e0b">
+                                            Peringatan 2/3
+                                        </span>
+                                    <?php else: ?>
+                                        <span class="badge" style="background:rgba(245,158,11,0.15);color:#fbbf24">
+                                            Peringatan 1/3
+                                        </span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><small><?= esc($v['reason']) ?></small></td>
+                                <td>
+                                    <span class="badge badge-draft" style="font-size:11px">
+                                        <?= strpos($v['device_type'] ?? '', 'HP') !== false ? '📱 ' : '💻 ' ?><?= esc($v['device_type'] ?? '-') ?>
+                                    </span>
+                                </td>
+                                <td><small style="color:var(--muted)"><?= esc($v['ip_address']) ?></small></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 <?php endif; ?>
 

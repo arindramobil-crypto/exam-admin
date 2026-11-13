@@ -53,6 +53,45 @@
             </div>
         </div>
 
+        <!-- Master Proctor Unlock PIN Card (Berbeda dengan Token Soal) -->
+        <div class="card mb-4" style="margin-bottom:24px;border:1px solid rgba(16,185,129,0.4);background:rgba(16,185,129,0.03)">
+            <div class="card-header" style="background:rgba(16,185,129,0.08);display:flex;align-items:center;justify-content:space-between">
+                <span class="card-title" style="color:var(--success)"><i class="fas fa-user-shield"></i> PIN Buka Kunci Pengawas (Proctor PIN)</span>
+                <button type="button" class="btn btn-sm btn-outline" onclick="toggleProctorPinEdit()" style="font-size:11px;padding:4px 8px">
+                    <i class="fas fa-edit"></i> Ubah PIN
+                </button>
+            </div>
+            <div class="card-body" style="padding:18px 20px">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div>
+                        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">PIN Master Pengawas (Khusus):</div>
+                        <div style="font-size:30px;font-weight:900;letter-spacing:4px;color:#10b981;font-family:'Courier New', monospace;margin-top:2px">
+                            <?= esc($proctorPin) ?>
+                        </div>
+                    </div>
+                    <div style="max-width:280px;font-size:12px;color:var(--muted);line-height:1.5">
+                        <i class="fas fa-info-circle" style="color:#10b981;margin-right:4px"></i>
+                        PIN ini <strong>BERBEDA DENGAN TOKEN SOAL</strong>. Hanya diketahui oleh Pengawas Ruangan untuk membuka kuis yang terkunci akibat siswa membuka tab/aplikasi lain.
+                    </div>
+                </div>
+
+                <!-- Form Ubah PIN (Hidden by default) -->
+                <div id="proctorPinForm" style="display:none;margin-top:16px;padding-top:16px;border-top:1px dashed var(--border)">
+                    <form action="<?= base_url('token/save-proctor-pin/'.$exam['id']) ?>" method="POST">
+                        <?= csrf_field() ?>
+                        <div class="form-group" style="margin-bottom:10px">
+                            <label class="form-label" style="font-size:12px">Masukkan PIN Pengawas Baru (Min. 4 Karakter)</label>
+                            <input type="text" name="proctor_pin" value="<?= esc($proctorPin) ?>" class="form-control" style="font-family:'Courier New',monospace;font-weight:700;letter-spacing:2px;text-transform:uppercase" required>
+                        </div>
+                        <div style="display:flex;gap:8px">
+                            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> Simpan PIN Baru</button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="toggleProctorPinEdit()">Batal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Form Rilis Token Baru -->
         <div class="card">
             <div class="card-header">
@@ -149,5 +188,14 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleProctorPinEdit() {
+    var form = document.getElementById('proctorPinForm');
+    if (form) {
+        form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
+    }
+}
+</script>
 
 <?php echo view('layout/footer'); ?>

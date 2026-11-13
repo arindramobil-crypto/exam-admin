@@ -1,7 +1,7 @@
 <?php
 namespace App\Controllers;
 
-use App\Models\{ExamModel, ParticipantModel, RoomModel, MoodleQuizModel, ExamSubjectModel, TokenModel};
+use App\Models\{ExamModel, ParticipantModel, RoomModel, MoodleQuizModel, ExamSubjectModel, TokenModel, MoodleViolationModel};
 use App\Libraries\MoodleService;
 
 class Dashboard extends BaseController
@@ -42,14 +42,25 @@ class Dashboard extends BaseController
 
     public function monitoring(int $examId)
     {
-        $examModel = new ExamModel();
-        $quizModel = new MoodleQuizModel();
+        $examModel      = new ExamModel();
+        $quizModel      = new MoodleQuizModel();
+        $violationModel = new MoodleViolationModel();
+        $tokenModel     = new TokenModel();
+
         $exam = $examModel->find($examId);
         if (!$exam) {
             return redirect()->to(base_url('exam'))->with('error', 'Ujian tidak ditemukan!');
         }
 
         $subjects = (new ExamSubjectModel())->where('exam_id', $examId)->findAll();
+        $quizIds  = array_filter(array_map('intval', array_column($subjects, 'moodle_quiz_id')));
+
+        // Ambil data statistik dan log pelanggaran tab / kiosk
+        $violationStats   = !empty($quizIds) ? $violationModel->getStudentViolationStats($quizIds) : [];
+        $recentViolations = !empty($quizIds) ? $violationModel->getViolationsByQuizIds($quizIds, 50) : [];
+        $proctorPin       = $tokenModel->getProctorPin();
+        $activeToken      = $tokenModel->getActiveToken($examId);
+
         $monitoring = [];
         foreach ($subjects as $subject) {
             if ($subject['moodle_quiz_id']) {
@@ -64,10 +75,28 @@ class Dashboard extends BaseController
                 ];
             }
         }
+
+        // Hitung rekap pelanggaran global
+        $totalLocked = 0;
+        foreach ($violationStats as $st) {
+            if (!empty($st['is_locked'])) {
+                $totalLocked++;
+            }
+        }
+        $totalViolations = count(array_filter($recentViolations, fn($v) => in_array($v['action'], ['warning_1', 'warning_2', 'locked'])));
+        $totalUnlocked   = count(array_filter($recentViolations, fn($v) => $v['action'] === 'unlocked'));
+
         return view('dashboard/monitoring', [
-            'title'      => 'Monitoring Ujian',
-            'exam'       => $exam,
-            'monitoring' => $monitoring,
+            'title'            => 'Monitoring Ujian Live',
+            'exam'             => $exam,
+            'monitoring'       => $monitoring,
+            'violationStats'   => $violationStats,
+            'recentViolations' => $recentViolations,
+            'totalViolations'  => $totalViolations,
+            'totalLocked'      => $totalLocked,
+            'totalUnlocked'    => $totalUnlocked,
+            'proctorPin'       => $proctorPin,
+            'activeToken'      => $activeToken,
         ]);
     }
 }

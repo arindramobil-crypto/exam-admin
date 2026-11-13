@@ -25,6 +25,7 @@ class Token extends BaseController
         $subjects = (new ExamSubjectModel())->where('exam_id', $examId)->findAll();
         $activeToken = $this->tokenModel->getActiveToken($examId);
         $recentTokens = $this->tokenModel->getTokenHistoryWithDetails($examId, 25);
+        $proctorPin = $this->tokenModel->getProctorPin();
 
         return view('token/index', [
             'title'        => 'Rilis Token CBT',
@@ -32,7 +33,18 @@ class Token extends BaseController
             'subjects'     => $subjects,
             'activeToken'  => $activeToken,
             'recentTokens' => $recentTokens,
+            'proctorPin'   => $proctorPin,
         ]);
+    }
+
+    public function saveProctorPin(int $examId)
+    {
+        $newPin = $this->request->getPost('proctor_pin');
+        if (!empty($newPin)) {
+            $this->tokenModel->setProctorPin($newPin);
+            return redirect()->to(base_url('token/' . $examId))->with('success', 'PIN Buka Kunci Pengawas berhasil diperbarui: ' . strtoupper(trim($newPin)));
+        }
+        return redirect()->to(base_url('token/' . $examId))->with('error', 'PIN tidak boleh kosong.');
     }
 
     public function generate(int $examId)
