@@ -76,8 +76,11 @@
                 <div class="form-group" style="margin-bottom:12px">
                     <label style="font-size:12px;color:#cbd5e1;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
                         <input type="checkbox" name="sync_moodle" value="1" checked> 
-                        <strong>Otomatis Buat Akun & Enrol ke Moodle</strong>
+                        <strong>Otomatis Buat Akun, Kohor Kelas &amp; Enrol ke Moodle</strong>
                     </label>
+                    <small style="display:block;font-size:11px;color:var(--muted);margin-top:3px">
+                        <i class="fas fa-info-circle" style="color:var(--accent)"></i> Template Excel kini dilengkapi kolom <strong>Ruang</strong> &amp; <strong>No. Meja</strong>, serta otomatis membuat <strong>Kohor (Cohort)</strong> dari kelas di Moodle.
+                    </small>
                 </div>
                 <div style="display:flex;gap:8px">
                     <a href="<?= base_url('participant/download-template') ?>" class="btn btn-sm btn-outline" style="flex:1;justify-content:center;font-size:12px" title="Unduh Format Excel">

@@ -123,6 +123,7 @@ class MoodleUserModel extends Model
 
             $email = !empty($userData['email']) ? trim($userData['email']) : ($username . '@school.local');
             $idNumber = !empty($userData['nis']) ? trim($userData['nis']) : ($userData['idnumber'] ?? $username);
+            $department = !empty($userData['kelas']) ? trim($userData['kelas']) : ($existing['department'] ?? '');
 
             if ($existing) {
                 // Update password and ensure account is active & confirmed
@@ -131,6 +132,7 @@ class MoodleUserModel extends Model
                     'firstname'    => $firstName,
                     'lastname'     => $lastName,
                     'idnumber'     => $idNumber,
+                    'department'   => $department,
                     'confirmed'    => 1,
                     'deleted'      => 0,
                     'suspended'    => 0,
@@ -149,6 +151,7 @@ class MoodleUserModel extends Model
                     'firstname'    => $firstName,
                     'lastname'     => $lastName,
                     'email'        => $email,
+                    'department'   => $department,
                     'lang'         => 'en',
                     'calendartype' => 'gregorian',
                     'timecreated'  => $now,
@@ -239,5 +242,99 @@ class MoodleUserModel extends Model
             log_message('error', 'MoodleUserModel::enrolStudentToCourse error: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Dapatkan ID kohor berdasarkan nama kelas, atau buat baru di Moodle jika belum ada
+     */
+    public function getOrCreateCohort(string $className): ?int
+    {
+        try {
+            $name = trim($className);
+            if (empty($name)) return null;
+
+            // Cari kohor yang sudah ada berdasarkan name atau idnumber
+            $existing = $this->db->table('cohort')
+                ->groupStart()
+                    ->where('name', $name)
+                    ->orWhere('idnumber', $name)
+                ->groupEnd()
+                ->get()->getRowArray();
+
+            if ($existing) {
+                return (int)$existing['id'];
+            }
+
+            // Dapatkan contextid sistem Moodle (contextlevel = 10, biasanya 1)
+            $context = $this->db->table('context')
+                ->where('contextlevel', 10)
+                ->get()->getRowArray();
+            $contextId = $context ? (int)$context['id'] : 1;
+
+            $now = time();
+            $data = [
+                'contextid'         => $contextId,
+                'name'              => $name,
+                'idnumber'          => $name,
+                'description'       => 'Kohor Siswa Kelas ' . $name,
+                'descriptionformat' => 1,
+                'visible'           => 1,
+                'component'         => '',
+                'timecreated'       => $now,
+                'timemodified'      => $now,
+            ];
+
+            if ($this->db->fieldExists('theme', 'cohort')) {
+                $data['theme'] = '';
+            }
+
+            $this->db->table('cohort')->insert($data);
+            return (int)$this->db->insertID();
+        } catch (Throwable $e) {
+            log_message('error', 'MoodleUserModel::getOrCreateCohort error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Daftarkan / masukkan siswa Moodle ke anggota kohor (mdl_cohort_members)
+     */
+    public function addStudentToCohort(int $userId, int $cohortId): bool
+    {
+        try {
+            if (!$userId || !$cohortId) return false;
+
+            $exists = $this->db->table('cohort_members')
+                ->where('cohortid', $cohortId)
+                ->where('userid', $userId)
+                ->countAllResults() > 0;
+
+            if (!$exists) {
+                $this->db->table('cohort_members')->insert([
+                    'cohortid'  => $cohortId,
+                    'userid'    => $userId,
+                    'timeadded' => time(),
+                ]);
+            }
+            return true;
+        } catch (Throwable $e) {
+            log_message('error', 'MoodleUserModel::addStudentToCohort error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Buat kohor otomatis dari nama kelas dan masukkan siswa ke kohor tersebut
+     */
+    public function syncStudentToClassCohort(int $userId, string $className): ?int
+    {
+        if (!$userId || empty(trim($className))) return null;
+
+        $cohortId = $this->getOrCreateCohort($className);
+        if ($cohortId) {
+            $this->addStudentToCohort($userId, $cohortId);
+            return $cohortId;
+        }
+        return null;
     }
 }

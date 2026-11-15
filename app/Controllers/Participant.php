@@ -272,41 +272,132 @@ class Participant extends BaseController
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
 
-            $pModel = new ParticipantModel();
+            $pModel          = new ParticipantModel();
+            $roomModel       = new RoomModel();
             $moodleUserModel = new MoodleUserModel();
+
+            // Cache ruangan yang ada untuk lookup map
+            $allRooms = $roomModel->findAll();
+            $roomMap  = [];
+            foreach ($allRooms as $r) {
+                $roomMap[strtolower(trim($r['nama_ruang']))] = (int)$r['id'];
+                $roomMap[(string)$r['id']] = (int)$r['id'];
+            }
+
+            // Default column index mapping (0-based)
+            $colMap = [
+                'no'         => 0,
+                'no_peserta' => 1,
+                'nama'       => 2,
+                'nis'        => 3,
+                'nisn'       => 4,
+                'kelas'      => 5,
+                'ruang'      => 6,
+                'meja'       => 7,
+                'sesi'       => 8,
+                'password'   => 9,
+            ];
+
+            $startRow = 1;
+            // Deteksi baris header dan mapping kolom otomatis
+            for ($i = 0; $i < min(10, count($rows)); $i++) {
+                $r = $rows[$i];
+                if (!is_array($r)) continue;
+                $rowStr = strtolower(implode(' ', array_filter(array_map('strval', $r))));
+                if (str_contains($rowStr, 'nama') || str_contains($rowStr, 'peserta') || str_contains($rowStr, 'nis')) {
+                    $startRow = $i + 1;
+
+                    foreach ($r as $cIdx => $cVal) {
+                        $cLower = strtolower(trim((string)$cVal));
+                        if (empty($cLower)) continue;
+
+                        if (str_contains($cLower, 'peserta')) {
+                            $colMap['no_peserta'] = $cIdx;
+                        } elseif (str_contains($cLower, 'nama')) {
+                            $colMap['nama'] = $cIdx;
+                        } elseif (str_contains($cLower, 'nisn')) {
+                            $colMap['nisn'] = $cIdx;
+                        } elseif ($cLower === 'nis' || str_starts_with($cLower, 'nis ')) {
+                            $colMap['nis'] = $cIdx;
+                        } elseif (str_contains($cLower, 'kelas') || str_contains($cLower, 'rombel')) {
+                            $colMap['kelas'] = $cIdx;
+                        } elseif (str_contains($cLower, 'ruang') || str_contains($cLower, 'room')) {
+                            $colMap['ruang'] = $cIdx;
+                        } elseif (str_contains($cLower, 'meja') || str_contains($cLower, 'seat') || str_contains($cLower, 'kursi')) {
+                            $colMap['meja'] = $cIdx;
+                        } elseif (str_contains($cLower, 'sesi') || str_contains($cLower, 'session')) {
+                            $colMap['sesi'] = $cIdx;
+                        } elseif (str_contains($cLower, 'password') || str_contains($cLower, 'sandi') || str_contains($cLower, 'pass')) {
+                            $colMap['password'] = $cIdx;
+                        }
+                    }
+                    break;
+                }
+            }
+
             $existing = $pModel->where('exam_id', $examId)->countAllResults();
             $urut = $existing + 1;
             $inserted = 0;
             $moodleCreated = 0;
             $moodleEnrolled = 0;
-
-            $startRow = 1;
-            for ($i = 0; $i < min(10, count($rows)); $i++) {
-                if (isset($rows[$i][0]) && (strtolower(trim($rows[$i][0])) === 'no' || strtolower(trim($rows[$i][1] ?? '')) === 'no. peserta' || strtolower(trim($rows[$i][1] ?? '')) === 'nama')) {
-                    $startRow = $i + 1;
-                    break;
-                }
-            }
+            $cohortsSynced = 0;
+            $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
             for ($i = $startRow; $i < count($rows); $i++) {
                 $row = $rows[$i];
-                if (empty($row[1]) && empty($row[2])) continue;
+                if (empty($row)) continue;
 
-                $nama = trim($row[2] ?? ($row[1] ?? ''));
+                $nama = trim((string)($row[$colMap['nama']] ?? ''));
                 if (empty($nama)) continue;
 
-                $nis   = trim($row[3] ?? ($row[2] ?? ''));
-                $nisn  = trim($row[4] ?? '');
-                $kelas = trim($row[5] ?? ($row[3] ?? '10'));
+                $noPesertaRaw = trim((string)($row[$colMap['no_peserta']] ?? ''));
+                $nis          = trim((string)($row[$colMap['nis']] ?? ''));
+                $nisn         = trim((string)($row[$colMap['nisn']] ?? ''));
+                $kelas        = trim((string)($row[$colMap['kelas']] ?? '10'));
+                $ruangRaw     = trim((string)($row[$colMap['ruang']] ?? ''));
+                $mejaRaw      = trim((string)($row[$colMap['meja']] ?? ''));
+                $sesiRaw      = trim((string)($row[$colMap['sesi']] ?? ''));
+                $pwdRaw       = trim((string)($row[$colMap['password']] ?? ''));
 
-                $nomor = !empty($row[1]) && str_contains($row[1], '-') ? trim($row[1]) : $pModel->generateNomorPeserta($examId, $kelas, $urut);
+                // Tentukan Nomor Peserta
+                $nomor = (!empty($noPesertaRaw) && str_contains($noPesertaRaw, '-')) 
+                    ? $noPesertaRaw 
+                    : $pModel->generateNomorPeserta($examId, $kelas, $urut);
 
-                $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-                $pwd = !empty($row[9]) ? trim($row[9]) : substr(str_shuffle($chars), 0, 6);
+                // Tentukan Password CBT
+                $pwd = !empty($pwdRaw) ? $pwdRaw : substr(str_shuffle($chars), 0, 6);
+
+                // Tentukan Sesi
+                $sesiClean = preg_replace('/[^0-9]/', '', $sesiRaw);
+                $sesi = !empty($sesiClean) ? (int)$sesiClean : 1;
+
+                // Tentukan Nomor Meja
+                $mejaClean = preg_replace('/[^0-9]/', '', $mejaRaw);
+                $nomorMeja = !empty($mejaClean) ? (int)$mejaClean : null;
+
+                // Tentukan Ruangan
+                $roomId = null;
+                if (!empty($ruangRaw)) {
+                    $ruangKey = strtolower($ruangRaw);
+                    if (isset($roomMap[$ruangKey])) {
+                        $roomId = $roomMap[$ruangKey];
+                    } else {
+                        // Jika ruangan belum terdaftar, buat otomatis di tabel rooms
+                        $newRoomId = $roomModel->insert([
+                            'nama_ruang' => $ruangRaw,
+                            'kapasitas'  => 36,
+                            'keterangan' => 'Dibuat otomatis dari Import Excel',
+                        ]);
+                        if ($newRoomId) {
+                            $roomId = (int)$newRoomId;
+                            $roomMap[$ruangKey] = $roomId;
+                        }
+                    }
+                }
 
                 $moodleUserId = null;
 
-                // Sync to Moodle if enabled
+                // Sync to Moodle & Kohor Otomatis
                 if ($syncMoodle) {
                     $username = strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $nis ?: $nomor));
                     $moodleId = $moodleUserModel->createOrUpdateStudent([
@@ -314,11 +405,20 @@ class Participant extends BaseController
                         'password' => $pwd,
                         'nama'     => $nama,
                         'nis'      => $nis ?: $username,
+                        'kelas'    => $kelas,
                     ]);
 
                     if ($moodleId) {
                         $moodleUserId = $moodleId;
                         $moodleCreated++;
+
+                        // Buat kohor otomatis dari nama kelas dan masukkan siswa
+                        if (!empty($kelas)) {
+                            $cohortId = $moodleUserModel->syncStudentToClassCohort($moodleId, $kelas);
+                            if ($cohortId) {
+                                $cohortsSynced++;
+                            }
+                        }
 
                         // Enrol to course if courseId is found
                         if ($courseId) {
@@ -332,13 +432,15 @@ class Participant extends BaseController
                 $pModel->insert([
                     'exam_id'        => $examId,
                     'subject_id'     => $subjectId ?: null,
+                    'room_id'        => $roomId,
+                    'nomor_meja'     => $nomorMeja,
+                    'sesi'           => $sesi,
                     'moodle_user_id' => $moodleUserId,
                     'nomor_peserta'  => $nomor,
                     'nama'           => $nama,
                     'nis'            => $nis,
                     'nisn'           => $nisn,
                     'kelas'          => $kelas,
-                    'sesi'           => !empty($row[8]) ? (int)$row[8] : 1,
                     'password'       => $pwd,
                 ]);
 
@@ -348,7 +450,7 @@ class Participant extends BaseController
 
             $msg = "$inserted peserta berhasil diimpor dari Excel.";
             if ($syncMoodle) {
-                $msg .= " ($moodleCreated akun siswa dibuat/disinkronkan di Moodle";
+                $msg .= " ($moodleCreated akun siswa & kohor kelas disinkronkan di Moodle";
                 if ($courseId) {
                     $msg .= ", $moodleEnrolled siswa dienrol ke kursus)";
                 } else {
@@ -391,6 +493,7 @@ class Participant extends BaseController
         $moodleUserModel = new MoodleUserModel();
         $synced = 0;
         $enrolled = 0;
+        $cohortsSynced = 0;
 
         foreach ($participants as $p) {
             $username = strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $p['nis'] ?: $p['nomor_peserta']));
@@ -401,11 +504,19 @@ class Participant extends BaseController
                 'password' => $pwd,
                 'nama'     => $p['nama'],
                 'nis'      => $p['nis'] ?: $username,
+                'kelas'    => $p['kelas'] ?? '',
             ]);
 
             if ($moodleId) {
                 $pModel->update($p['id'], ['moodle_user_id' => $moodleId]);
                 $synced++;
+
+                // Sinkronkan ke kohor kelas di Moodle secara otomatis
+                if (!empty($p['kelas'])) {
+                    if ($moodleUserModel->syncStudentToClassCohort($moodleId, $p['kelas'])) {
+                        $cohortsSynced++;
+                    }
+                }
 
                 foreach ($courseIds as $cId) {
                     if ($moodleUserModel->enrolStudentToCourse($moodleId, $cId)) {
@@ -415,7 +526,7 @@ class Participant extends BaseController
             }
         }
 
-        return redirect()->back()->with('success', "Sukses! $synced akun siswa disinkronkan ke Moodle, dan $enrolled penugasan kursus berhasil didaftarkan.");
+        return redirect()->back()->with('success', "Sukses! $synced akun siswa & kohor kelas berhasil disinkronkan ke Moodle, dan $enrolled penugasan kursus terdaftar.");
     }
 
     public function downloadTemplateExcel()
@@ -424,19 +535,63 @@ class Participant extends BaseController
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Template Peserta');
 
-        $headers = ['No', 'No. Peserta (Opsional)', 'Nama Siswa', 'NIS', 'NISN', 'Kelas', 'Sesi', 'Password (Opsional)'];
+        $headers = [
+            'No',
+            'No. Peserta (Opsional)',
+            'Nama Lengkap',
+            'NIS',
+            'NISN',
+            'Kelas',
+            'Ruang',
+            'No. Meja',
+            'Sesi',
+            'Password (Opsional)'
+        ];
         foreach ($headers as $i => $h) {
             $sheet->setCellValue([$i + 1, 1], $h);
         }
 
-        $sheet->setCellValue('A2', '1');
+        // Baris Contoh 1
+        $sheet->setCellValue('A2', 1);
         $sheet->setCellValue('B2', '2026-10-0001');
         $sheet->setCellValue('C2', 'Ahmad Fauzi');
-        $sheet->setCellValue('D2', '1001');
-        $sheet->setCellValue('E2', '0081234567');
-        $sheet->setCellValue('F2', '10 IPA 1');
-        $sheet->setCellValue('G2', '1');
-        $sheet->setCellValue('H2', 'CBT99');
+        $sheet->setCellValueExplicit('D2', '7001', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit('E2', '0081234567', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('F2', 'X TKJ 1');
+        $sheet->setCellValue('G2', '10 TKJ 1');
+        $sheet->setCellValue('H2', 1);
+        $sheet->setCellValue('I2', 1);
+        $sheet->setCellValue('J2', 'P2BDRE');
+
+        // Baris Contoh 2
+        $sheet->setCellValue('A3', 2);
+        $sheet->setCellValue('B3', '2026-10-0002');
+        $sheet->setCellValue('C3', 'Adinda Ainur Rohmasari');
+        $sheet->setCellValueExplicit('D3', '7002', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit('E3', '0081234568', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('F3', 'X TKJ 1');
+        $sheet->setCellValue('G3', '10 TKJ 1');
+        $sheet->setCellValue('H3', 2);
+        $sheet->setCellValue('I3', 1);
+        $sheet->setCellValue('J3', 'ZM2SAD');
+
+        // Baris Contoh 3
+        $sheet->setCellValue('A4', 3);
+        $sheet->setCellValue('B4', '2026-10-0003');
+        $sheet->setCellValue('C4', 'Budi Santoso');
+        $sheet->setCellValueExplicit('D4', '7003', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValueExplicit('E4', '0081234569', \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        $sheet->setCellValue('F4', 'X TKJ 2');
+        $sheet->setCellValue('G4', '10 TKJ 2');
+        $sheet->setCellValue('H4', 1);
+        $sheet->setCellValue('I4', 1);
+        $sheet->setCellValue('J4', 'K248MC');
+
+        // Style Header
+        $sheet->getStyle('A1:J1')->getFont()->setBold(true);
+        foreach (range('A', 'J') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
 
         $writer = new Xlsx($spreadsheet);
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -507,7 +662,13 @@ class Participant extends BaseController
                     'password' => $password ?: '123456',
                     'nama'     => $nama,
                     'nis'      => $nis ?: $username,
+                    'kelas'    => $kelas,
                 ]);
+
+                // Update kohor kelas Moodle
+                if (!empty($kelas)) {
+                    $moodleUserModel->syncStudentToClassCohort((int)$p['moodle_user_id'], $kelas);
+                }
             } catch (\Throwable $e) {
                 log_message('error', 'Participant::update sync to Moodle failed: ' . $e->getMessage());
             }
