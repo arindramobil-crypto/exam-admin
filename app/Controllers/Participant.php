@@ -447,4 +447,119 @@ class Participant extends BaseController
         }
         return redirect()->back()->with('error', 'Peserta tidak ditemukan!');
     }
+
+    /**
+     * Update individual participant details
+     */
+    public function update(int $id)
+    {
+        $pModel = new ParticipantModel();
+        $p = $pModel->find($id);
+        if (!$p) {
+            return redirect()->back()->with('error', 'Data peserta tidak ditemukan!');
+        }
+
+        $examId       = (int)$p['exam_id'];
+        $nama         = trim((string)$this->request->getPost('nama'));
+        $nomorPeserta = trim((string)$this->request->getPost('nomor_peserta'));
+        $nis          = trim((string)$this->request->getPost('nis'));
+        $nisn         = trim((string)$this->request->getPost('nisn'));
+        $kelas        = trim((string)$this->request->getPost('kelas'));
+        $roomId       = $this->request->getPost('room_id') ? (int)$this->request->getPost('room_id') : null;
+        $nomorMeja    = $this->request->getPost('nomor_meja') ? (int)$this->request->getPost('nomor_meja') : null;
+        $sesi         = (int)($this->request->getPost('sesi') ?: 1);
+        $password     = trim((string)$this->request->getPost('password'));
+        $syncMoodle   = $this->request->getPost('sync_moodle') == '1';
+
+        if (empty($nama) || empty($nomorPeserta)) {
+            return redirect()->back()->with('error', 'Nama lengkap dan Nomor Peserta wajib diisi.');
+        }
+
+        $pModel->update($id, [
+            'nama'          => $nama,
+            'nomor_peserta' => $nomorPeserta,
+            'nis'           => $nis,
+            'nisn'          => $nisn,
+            'kelas'         => $kelas,
+            'room_id'       => $roomId,
+            'nomor_meja'    => $nomorMeja,
+            'sesi'          => $sesi,
+            'password'      => $password,
+        ]);
+
+        // Jika terhubung ke Moodle dan opsi sync dipilih, update juga akun Moodle-nya
+        if ($syncMoodle && !empty($p['moodle_user_id'])) {
+            try {
+                $username = strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $nis ?: $nomorPeserta));
+                $moodleUserModel = new MoodleUserModel();
+                $moodleUserModel->createOrUpdateStudent([
+                    'username' => $username,
+                    'password' => $password ?: '123456',
+                    'nama'     => $nama,
+                    'nis'      => $nis ?: $username,
+                ]);
+            } catch (\Throwable $e) {
+                log_message('error', 'Participant::update sync to Moodle failed: ' . $e->getMessage());
+            }
+        }
+
+        return redirect()->to(base_url("participant/{$examId}"))
+            ->with('success', "Data peserta '{$nama}' berhasil diperbarui!");
+    }
+
+    /**
+     * Reset / Hapus seluruh data peserta ujian ini
+     */
+    public function resetAll(int $examId)
+    {
+        $pModel = new ParticipantModel();
+        $total = $pModel->where('exam_id', $examId)->countAllResults();
+
+        if ($total === 0) {
+            return redirect()->back()->with('error', 'Tidak ada data peserta yang perlu direset.');
+        }
+
+        $pModel->where('exam_id', $examId)->delete();
+
+        return redirect()->to(base_url("participant/{$examId}"))
+            ->with('success', "Seluruh data peserta ({$total} siswa) pada ujian ini berhasil direset/dikosongkan.");
+    }
+
+    /**
+     * Reset / Kosongkan pembagian ruang dan nomor meja peserta
+     */
+    public function resetAllocation(int $examId)
+    {
+        $pModel = new ParticipantModel();
+        $pModel->where('exam_id', $examId)->set([
+            'room_id'    => null,
+            'nomor_meja' => null,
+            'sesi'       => 1,
+        ])->update();
+
+        return redirect()->to(base_url("participant/{$examId}"))
+            ->with('success', 'Penempatan ruang, sesi, dan nomor meja seluruh peserta berhasil direset!');
+    }
+
+    /**
+     * Reset / Generate ulang seluruh password peserta ujian
+     */
+    public function resetPasswords(int $examId)
+    {
+        $pModel = new ParticipantModel();
+        $participants = $pModel->where('exam_id', $examId)->findAll();
+
+        if (empty($participants)) {
+            return redirect()->back()->with('error', 'Data peserta kosong!');
+        }
+
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        foreach ($participants as $p) {
+            $pwd = substr(str_shuffle($chars), 0, 6);
+            $pModel->update($p['id'], ['password' => $pwd]);
+        }
+
+        return redirect()->to(base_url("participant/{$examId}"))
+            ->with('success', 'Password CBT seluruh peserta (' . count($participants) . ' siswa) berhasil di-generate ulang!');
+    }
 }

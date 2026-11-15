@@ -130,8 +130,21 @@
 
 <!-- Tabel Daftar Peserta -->
 <div class="card">
-    <div class="card-header">
+    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <span class="card-title"><i class="fas fa-list-ol"></i> Daftar Peserta Ujian (<?= count($participants) ?> Siswa)</span>
+        <?php if(!empty($participants)): ?>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <a href="<?= base_url('participant/'.$exam['id'].'/reset-allocation') ?>" class="btn btn-sm btn-outline" style="color:var(--warning);border-color:rgba(245,158,11,0.4);font-size:11.5px" onclick="event.preventDefault(); showConfirm('<?= base_url('participant/'.$exam['id'].'/reset-allocation') ?>', 'Reset Penempatan Ruang & Meja', 'Apakah Anda yakin ingin mengosongkan penempatan ruang dan nomor meja untuk seluruh peserta ujian ini? Data siswa tidak akan terhapus.', 'btn-warning')" title="Kosongkan penempatan ruang dan meja">
+                <i class="fas fa-undo"></i> Reset Ruang & Meja
+            </a>
+            <a href="<?= base_url('participant/'.$exam['id'].'/reset-passwords') ?>" class="btn btn-sm btn-outline" style="color:#38bdf8;border-color:rgba(56,189,248,0.4);font-size:11.5px" onclick="event.preventDefault(); showConfirm('<?= base_url('participant/'.$exam['id'].'/reset-passwords') ?>', 'Reset Password CBT', 'Apakah Anda yakin ingin membuat ulang (generate acak baru) seluruh password peserta ujian ini?', 'btn-info')" title="Generate ulang seluruh password siswa">
+                <i class="fas fa-key"></i> Reset Password
+            </a>
+            <a href="<?= base_url('participant/'.$exam['id'].'/reset-all') ?>" class="btn btn-sm btn-danger" style="font-size:11.5px" onclick="event.preventDefault(); showConfirm('<?= base_url('participant/'.$exam['id'].'/reset-all') ?>', 'Reset Semua Peserta Ujian', 'PERINGATAN: Seluruh <?= count($participants) ?> peserta ujian ini akan DIHAPUS dari daftar ujian. Tindakan ini berguna jika Anda salah upload/tarik data dan ingin memulai dari awal. Yakin ingin melanjutkan?', 'btn-danger')" title="Hapus dan kosongkan seluruh data peserta ujian ini">
+                <i class="fas fa-trash-alt"></i> Reset Semua Peserta
+            </a>
+        </div>
+        <?php endif; ?>
     </div>
     <div class="table-wrap">
         <table>
@@ -146,7 +159,7 @@
                     <th>Sesi</th>
                     <th>Password CBT</th>
                     <th>Status Moodle</th>
-                    <th>Aksi</th>
+                    <th style="text-align:center">Aksi</th>
                 </tr>
             </thead>
             <tbody>
@@ -188,10 +201,28 @@
                             </span>
                         <?php endif; ?>
                     </td>
-                    <td>
-                        <a href="<?= base_url('participant/delete/'.$p['id']) ?>" class="btn btn-sm btn-danger" onclick="event.preventDefault(); showConfirm('<?= base_url('participant/delete/'.$p['id']) ?>', 'Hapus Peserta', 'Yakin ingin menghapus peserta <?= esc(addslashes($p['nama'])) ?> (<?= esc($p['nomor_peserta']) ?>)?', 'btn-danger')" title="Hapus">
-                            <i class="fas fa-trash"></i>
-                        </a>
+                    <td style="text-align:center;white-space:nowrap">
+                        <div style="display:inline-flex;gap:4px">
+                            <button type="button" class="btn btn-sm btn-warning edit-participant-btn" 
+                                    data-id="<?= $p['id'] ?>"
+                                    data-nomor="<?= esc($p['nomor_peserta']) ?>"
+                                    data-nama="<?= esc($p['nama']) ?>"
+                                    data-nis="<?= esc($p['nis']) ?>"
+                                    data-nisn="<?= esc($p['nisn']) ?>"
+                                    data-kelas="<?= esc($p['kelas']) ?>"
+                                    data-room="<?= esc($p['room_id']) ?>"
+                                    data-meja="<?= esc($p['nomor_meja']) ?>"
+                                    data-sesi="<?= esc($p['sesi'] ?: 1) ?>"
+                                    data-password="<?= esc($p['password']) ?>"
+                                    data-moodle="<?= esc($p['moodle_user_id']) ?>"
+                                    style="padding:4px 8px;font-size:12px;color:#000;font-weight:600"
+                                    title="Edit Data Peserta">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <a href="<?= base_url('participant/delete/'.$p['id']) ?>" class="btn btn-sm btn-danger" style="padding:4px 8px;font-size:12px" onclick="event.preventDefault(); showConfirm('<?= base_url('participant/delete/'.$p['id']) ?>', 'Hapus Peserta', 'Yakin ingin menghapus peserta <?= esc(addslashes($p['nama'])) ?> (<?= esc($p['nomor_peserta']) ?>)?', 'btn-danger')" title="Hapus">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
                     </td>
                 </tr>
                 <?php endforeach; ?>
@@ -207,5 +238,140 @@
         </table>
     </div>
 </div>
+
+<!-- Modal Edit Peserta Ujian -->
+<div id="modalEditParticipant" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:99999;align-items:center;justify-content:center;padding:16px;overflow-y:auto">
+    <div style="background:var(--card-bg, #1e293b);border:1px solid var(--border, #334155);border-radius:14px;padding:24px;max-width:560px;width:100%;box-shadow:0 25px 60px rgba(0,0,0,0.7);margin:auto">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;border-bottom:1px solid var(--border, #334155);padding-bottom:12px">
+            <h4 style="margin:0;color:#fff;display:flex;align-items:center;gap:8px;font-size:16px">
+                <i class="fas fa-user-edit" style="color:var(--warning)"></i> Edit Data Peserta Ujian
+            </h4>
+            <button type="button" onclick="closeEditModal()" style="background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1">&times;</button>
+        </div>
+
+        <form id="formEditParticipant" action="" method="POST">
+            <?= csrf_field() ?>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" style="font-size:11.5px">Nomor Peserta</label>
+                    <input type="text" name="nomor_peserta" id="edit_nomor_peserta" class="form-control" style="font-family:monospace;font-size:13px" required>
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" style="font-size:11.5px">Kelas</label>
+                    <input type="text" name="kelas" id="edit_kelas" class="form-control" style="font-size:13px" required>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:12px">
+                <label class="form-label" style="font-size:11.5px">Nama Lengkap Siswa</label>
+                <input type="text" name="nama" id="edit_nama" class="form-control" style="font-size:13.5px;font-weight:600" required>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" style="font-size:11.5px">NIS (Username)</label>
+                    <input type="text" name="nis" id="edit_nis" class="form-control" style="font-size:13px">
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" style="font-size:11.5px">NISN (Opsional)</label>
+                    <input type="text" name="nisn" id="edit_nisn" class="form-control" style="font-size:13px">
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:12px">
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" style="font-size:11.5px">Ruang Ujian</label>
+                    <select name="room_id" id="edit_room_id" class="form-control" style="font-size:12.5px">
+                        <option value="">-- Belum Diset --</option>
+                        <?php foreach($rooms as $r): ?>
+                            <option value="<?= $r['id'] ?>"><?= esc($r['nama_ruang']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" style="font-size:11.5px">No. Meja</label>
+                    <input type="number" name="nomor_meja" id="edit_nomor_meja" class="form-control" min="1" placeholder="-" style="font-size:13px">
+                </div>
+                <div class="form-group" style="margin:0">
+                    <label class="form-label" style="font-size:11.5px">Sesi</label>
+                    <select name="sesi" id="edit_sesi" class="form-control" style="font-size:12.5px">
+                        <option value="1">Sesi 1</option>
+                        <option value="2">Sesi 2</option>
+                        <option value="3">Sesi 3</option>
+                        <option value="4">Sesi 4</option>
+                        <option value="5">Sesi 5</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label" style="font-size:11.5px">Password CBT</label>
+                <div style="display:flex;gap:6px">
+                    <input type="text" name="password" id="edit_password" class="form-control" style="font-family:monospace;font-size:13.5px;letter-spacing:1px;font-weight:700" required>
+                    <button type="button" class="btn btn-sm btn-outline" onclick="generateRandomEditPassword()" title="Generate Password Acak" style="white-space:nowrap">
+                        <i class="fas fa-random"></i> Acak
+                    </button>
+                </div>
+            </div>
+
+            <div id="moodleSyncOptionBox" style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:8px;padding:10px 12px;margin-bottom:16px;display:none">
+                <label style="font-size:12px;color:#cbd5e1;cursor:pointer;display:flex;align-items:center;gap:8px;margin:0">
+                    <input type="checkbox" name="sync_moodle" id="edit_sync_moodle" value="1" checked>
+                    <span>Sinkronkan perubahan nama & password ke akun Moodle aktif</span>
+                </label>
+            </div>
+
+            <div style="display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border, #334155);padding-top:14px">
+                <button type="button" onclick="closeEditModal()" class="btn btn-sm btn-outline">Batal</button>
+                <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditModal(data) {
+    document.getElementById('formEditParticipant').action = '<?= base_url('participant/update') ?>/' + data.id;
+    document.getElementById('edit_nomor_peserta').value = data.nomor || '';
+    document.getElementById('edit_nama').value = data.nama || '';
+    document.getElementById('edit_nis').value = data.nis || '';
+    document.getElementById('edit_nisn').value = data.nisn || '';
+    document.getElementById('edit_kelas').value = data.kelas || '';
+    document.getElementById('edit_room_id').value = data.room || '';
+    document.getElementById('edit_nomor_meja').value = data.meja || '';
+    document.getElementById('edit_sesi').value = data.sesi || '1';
+    document.getElementById('edit_password').value = data.password || '';
+
+    var moodleBox = document.getElementById('moodleSyncOptionBox');
+    if (data.moodle && parseInt(data.moodle) > 0) {
+        moodleBox.style.display = 'block';
+    } else {
+        moodleBox.style.display = 'none';
+    }
+
+    var modal = document.getElementById('modalEditParticipant');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeEditModal() {
+    var modal = document.getElementById('modalEditParticipant');
+    if (modal) modal.style.display = 'none';
+}
+
+function generateRandomEditPassword() {
+    var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    var res = '';
+    for (var i = 0; i < 6; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    document.getElementById('edit_password').value = res;
+}
+
+document.querySelectorAll('.edit-participant-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        openEditModal(this.dataset);
+    });
+});
+</script>
 
 <?php echo view('layout/footer'); ?>

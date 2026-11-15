@@ -40,6 +40,10 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('participant/(:num)/sync-moodle', 'Participant::syncToMoodle/$1');
     $routes->get('participant/download-template', 'Participant::downloadTemplateExcel');
     $routes->get('participant/delete/(:num)', 'Participant::delete/$1');
+    $routes->post('participant/update/(:num)', 'Participant::update/$1');
+    $routes->match(['get', 'post'], 'participant/(:num)/reset-all', 'Participant::resetAll/$1');
+    $routes->match(['get', 'post'], 'participant/(:num)/reset-allocation', 'Participant::resetAllocation/$1');
+    $routes->match(['get', 'post'], 'participant/(:num)/reset-passwords', 'Participant::resetPasswords/$1');
 
     // Rooms
     $routes->get('room', 'Room::index');
