@@ -13,6 +13,7 @@ $routes->get('auth/logout', 'Auth::logout');
 $routes->group('', ['filter' => 'auth'], function($routes) {
     // Dashboard
     $routes->get('dashboard', 'Dashboard::index');
+    $routes->get('dashboard/monitoring', 'Dashboard::monitoring');
     $routes->get('dashboard/monitoring/(:num)', 'Dashboard::monitoring/$1');
     $routes->post('dashboard/remote-unlock/(:num)', 'Dashboard::remoteUnlock/$1');
 
@@ -23,11 +24,13 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('exam/edit/(:num)', 'Exam::edit/$1');
     $routes->post('exam/update/(:num)', 'Exam::update/$1');
     $routes->get('exam/delete/(:num)', 'Exam::delete/$1');
+    $routes->get('exam/set-active/(:num)', 'Exam::setActive/$1');
     $routes->get('exam/subjects/(:num)', 'Exam::subjects/$1');
     $routes->post('exam/subjects/(:num)/add', 'Exam::addSubject/$1');
     $routes->get('exam/subjects/delete/(:num)', 'Exam::deleteSubject/$1');
 
     // Participants
+    $routes->get('participant', 'Participant::index');
     $routes->get('participant/(:num)', 'Participant::index/$1');
     $routes->post('participant/(:num)/import', 'Participant::importFromMoodle/$1');
     $routes->post('participant/(:num)/assign-rooms', 'Participant::assignRooms/$1');
@@ -67,12 +70,14 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('attendance/export-excel/(:num)', 'Attendance::exportExcel/$1');
 
     // Minutes (Berita Acara)
+    $routes->get('minutes', 'Minutes::index');
     $routes->get('minutes/(:num)', 'Minutes::index/$1');
     $routes->get('minutes/form/(:num)/(:num)/(:num)', 'Minutes::form/$1/$2/$3');
     $routes->post('minutes/save', 'Minutes::save');
     $routes->get('minutes/print/(:num)', 'Minutes::print/$1');
 
     // Grades
+    $routes->get('grade', 'Grade::index');
     $routes->get('grade/(:num)', 'Grade::index/$1');
     $routes->get('grade/summary/(:num)', 'Grade::summary/$1');
     $routes->get('grade/export-summary-excel/(:num)', 'Grade::exportSummaryExcel/$1');
@@ -81,6 +86,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('grade/export-pdf/(:num)/(:num)', 'Grade::exportPdf/$1/$2');
 
     // Token CBT
+    $routes->get('token', 'Token::index');
     $routes->get('token/(:num)', 'Token::index/$1');
     $routes->post('token/generate/(:num)', 'Token::generate/$1');
     $routes->post('token/save-proctor-pin/(:num)', 'Token::saveProctorPin/$1');
@@ -89,12 +95,14 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('token/get-active-json/(:num)', 'Token::getActiveTokenJson/$1');
 
     // Supervisors & Proctors
+    $routes->get('supervisor', 'Supervisor::index');
     $routes->get('supervisor/(:num)', 'Supervisor::index/$1');
     $routes->post('supervisor/store/(:num)', 'Supervisor::store/$1');
     $routes->get('supervisor/delete/(:num)', 'Supervisor::delete/$1');
     $routes->get('supervisor/print-jadwal/(:num)', 'Supervisor::printJadwal/$1');
 
     // Item Analysis (Analisis Butir Soal)
+    $routes->get('analysis', 'Analysis::index');
     $routes->get('analysis/(:num)', 'Analysis::index/$1');
     $routes->get('analysis/detail/(:num)/(:num)', 'Analysis::detail/$1/$2');
     $routes->get('analysis/export-excel/(:num)/(:num)', 'Analysis::exportExcel/$1/$2');

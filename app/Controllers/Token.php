@@ -15,8 +15,18 @@ class Token extends BaseController
         $this->examModel  = new ExamModel();
     }
 
-    public function index(int $examId)
+    public function index(?int $examId = null)
     {
+        if (!$examId) {
+            $active = \App\Libraries\ExamContext::getActiveExam();
+            if ($active) {
+                return redirect()->to(base_url('token/' . $active['id']));
+            }
+            return redirect()->to(base_url('exam'))->with('error', 'Silakan buat paket ujian terlebih dahulu.');
+        }
+
+        \App\Libraries\ExamContext::setActiveExam($examId);
+
         $exam = $this->examModel->find($examId);
         if (!$exam) {
             return redirect()->to(base_url('exam'))->with('error', 'Ujian tidak ditemukan!');

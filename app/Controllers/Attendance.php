@@ -16,14 +16,21 @@ class Attendance extends BaseController
     {
         $examModel = new ExamModel();
 
-        // If no exam selected, show exam list
+        // If no exam selected in URL, check active exam context
         if (!$examId) {
+            $active = \App\Libraries\ExamContext::getActiveExam();
+            if ($active) {
+                return redirect()->to(base_url('attendance/' . $active['id']));
+            }
+
             $exams = $examModel->orderBy('id', 'DESC')->findAll();
             return view('attendance/select_exam', [
                 'title' => 'Daftar Hadir Ujian',
                 'exams' => $exams,
             ]);
         }
+
+        \App\Libraries\ExamContext::setActiveExam($examId);
 
         $exam = $examModel->find($examId);
         if (!$exam) {

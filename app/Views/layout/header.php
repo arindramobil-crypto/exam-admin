@@ -236,6 +236,44 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
         grid-template-columns:1fr;
     }
 }
+
+/* Custom Dropdown Menus */
+.dropdown-menu-custom {
+    display: none;
+    position: fixed;
+    background: #1e293b;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    box-shadow: 0 16px 36px rgba(0,0,0,0.65);
+    min-width: 220px;
+    z-index: 99999;
+    padding: 6px 0;
+    text-align: left;
+    backdrop-filter: blur(12px);
+    animation: fadeInDrop .15s ease-out;
+}
+.dropdown-menu-custom.show {
+    display: block;
+}
+@keyframes fadeInDrop {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.dropdown-item-custom {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    color: #e2e8f0;
+    font-size: 13px;
+    text-decoration: none;
+    transition: all 0.15s ease;
+}
+.dropdown-item-custom:hover {
+    background: rgba(99,102,241,0.15);
+    color: #fff;
+    padding-left: 20px;
+}
 </style>
 </head>
 <body>
@@ -245,6 +283,11 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
 
 <!-- Floating Toast Notification Container -->
 <div class="toast-container" id="toastContainer"></div>
+
+<?php
+$activeExam = \App\Libraries\ExamContext::getActiveExam();
+$allExams   = \App\Libraries\ExamContext::getAllExams();
+?>
 
 <aside class="sidebar" id="sidebarNav">
     <div class="sidebar-brand">
@@ -262,7 +305,7 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
         <a href="<?= base_url('dashboard') ?>" class="nav-item <?= (uri_string() === 'dashboard') ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-home"></i></span> Dashboard
         </a>
-        <a href="<?= base_url('exam') ?>" class="nav-item <?= str_starts_with(uri_string(),'exam') ? 'active' : '' ?>">
+        <a href="<?= base_url('exam') ?>" class="nav-item <?= (uri_string() === 'exam' || str_starts_with(uri_string(),'exam/')) ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-clipboard-list"></i></span> Manajemen Ujian
         </a>
 
@@ -271,28 +314,55 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
             <span class="icon"><i class="fas fa-door-open"></i></span> Ruang Ujian
         </a>
 
-        <div class="nav-section">Pelaksanaan CBT</div>
-        <a href="<?= base_url('exam') ?>" class="nav-item <?= str_starts_with(uri_string(),'participant') ? 'active' : '' ?>">
+        <div class="nav-section" style="display:flex;align-items:center;justify-content:space-between;padding-right:8px">
+            <span>Pelaksanaan CBT</span>
+            <?php if ($activeExam && $activeExam['status'] === 'aktif'): ?>
+                <span class="badge badge-aktif" style="font-size:9px;padding:2px 6px">Aktif</span>
+            <?php endif; ?>
+        </div>
+
+        <?php if (!empty($allExams)): ?>
+        <div style="padding:0 12px 10px 12px">
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 10px">
+                <div style="font-size:10px;color:var(--muted);margin-bottom:5px;display:flex;align-items:center;justify-content:space-between">
+                    <span style="font-weight:600;letter-spacing:0.5px;text-transform:uppercase"><i class="fas fa-layer-group" style="color:var(--accent);margin-right:4px"></i> Paket Terpilih:</span>
+                    <a href="<?= base_url('exam') ?>" title="Kelola Paket Ujian" style="color:var(--muted);font-size:11px"><i class="fas fa-cog"></i></a>
+                </div>
+                <select onchange="window.location.href='<?= base_url('exam/set-active') ?>/' + this.value" style="width:100%;background:rgba(15,23,42,0.95);border:1px solid rgba(99,102,241,0.3);color:#fff;border-radius:6px;padding:5px 8px;font-size:11.5px;outline:none;cursor:pointer;font-weight:600">
+                    <?php foreach ($allExams as $ex): ?>
+                        <option value="<?= $ex['id'] ?>" <?= ($activeExam && $ex['id'] == $activeExam['id']) ? 'selected' : '' ?>>
+                            <?= esc($ex['nama_ujian']) ?> (<?= esc($ex['status']) ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <?php endif; ?>
+
+        <a href="<?= $activeExam ? base_url('dashboard/monitoring/' . $activeExam['id']) : base_url('dashboard/monitoring') ?>" class="nav-item <?= str_contains(uri_string(), 'monitoring') ? 'active' : '' ?>">
+            <span class="icon"><i class="fas fa-desktop"></i></span> Monitoring Live
+        </a>
+        <a href="<?= $activeExam ? base_url('participant/' . $activeExam['id']) : base_url('participant') ?>" class="nav-item <?= str_starts_with(uri_string(), 'participant') ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-users"></i></span> Peserta &amp; Kartu
         </a>
-        <a href="<?= base_url('exam') ?>" class="nav-item <?= str_starts_with(uri_string(),'token') ? 'active' : '' ?>">
+        <a href="<?= $activeExam ? base_url('token/' . $activeExam['id']) : base_url('token') ?>" class="nav-item <?= str_starts_with(uri_string(), 'token') ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-key"></i></span> Rilis Token CBT
         </a>
-        <a href="<?= base_url('exam') ?>" class="nav-item <?= str_starts_with(uri_string(),'supervisor') ? 'active' : '' ?>">
+        <a href="<?= $activeExam ? base_url('supervisor/' . $activeExam['id']) : base_url('supervisor') ?>" class="nav-item <?= str_starts_with(uri_string(), 'supervisor') ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-user-shield"></i></span> Pengawas &amp; Proktor
         </a>
-        <a href="<?= base_url('attendance') ?>" class="nav-item <?= str_starts_with(uri_string(),'attendance') ? 'active' : '' ?>">
+        <a href="<?= $activeExam ? base_url('attendance/' . $activeExam['id']) : base_url('attendance') ?>" class="nav-item <?= str_starts_with(uri_string(), 'attendance') ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-check-square"></i></span> Daftar Hadir
         </a>
-        <a href="<?= base_url('exam') ?>" class="nav-item <?= str_starts_with(uri_string(),'minutes') ? 'active' : '' ?>">
+        <a href="<?= $activeExam ? base_url('minutes/' . $activeExam['id']) : base_url('minutes') ?>" class="nav-item <?= str_starts_with(uri_string(), 'minutes') ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-file-alt"></i></span> Berita Acara
         </a>
 
         <div class="nav-section">Pelaporan &amp; Analisis</div>
-        <a href="<?= base_url('exam') ?>" class="nav-item <?= str_starts_with(uri_string(),'grade') ? 'active' : '' ?>">
+        <a href="<?= $activeExam ? base_url('grade/' . $activeExam['id']) : base_url('grade') ?>" class="nav-item <?= str_starts_with(uri_string(), 'grade') ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-chart-bar"></i></span> Download Nilai
         </a>
-        <a href="<?= base_url('exam') ?>" class="nav-item <?= str_starts_with(uri_string(),'analysis') ? 'active' : '' ?>">
+        <a href="<?= $activeExam ? base_url('analysis/' . $activeExam['id']) : base_url('analysis') ?>" class="nav-item <?= str_starts_with(uri_string(), 'analysis') ? 'active' : '' ?>">
             <span class="icon"><i class="fas fa-chart-pie"></i></span> Analisis Butir Soal
         </a>
 
@@ -328,7 +398,15 @@ tbody tr:hover{background:rgba(255,255,255,.02)}
             <i class="fas fa-bars"></i>
         </button>
         <h1><?= $title ?? 'Dashboard' ?></h1>
-        <div class="topbar-actions"></div>
+        <div class="topbar-actions">
+            <?php if (!empty($activeExam)): ?>
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);padding:5px 12px;border-radius:20px;border:1px solid rgba(255,255,255,0.08);font-size:12px">
+                <span style="color:var(--muted)"><i class="fas fa-bullseye" style="color:var(--accent)"></i> Paket:</span>
+                <strong style="color:#fff"><?= esc($activeExam['nama_ujian']) ?></strong>
+                <a href="<?= base_url('exam') ?>" style="color:var(--accent);font-size:11px;margin-left:4px" title="Ganti Paket Ujian"><i class="fas fa-sync-alt"></i></a>
+            </div>
+            <?php endif; ?>
+        </div>
     </div>
 
     <div class="content">
@@ -418,6 +496,44 @@ function dismissToast(el) {
         if (el.parentElement) el.parentElement.removeChild(el);
     }, 300);
 }
+
+// ─── Custom Floating Dropdown Toggle ─────────────────────────────────────────
+function toggleDropdown(e, id) {
+    e.stopPropagation();
+    var menu = document.getElementById(id);
+    if (!menu) return;
+    var isOpen = menu.classList.contains('show');
+    document.querySelectorAll('.dropdown-menu-custom').forEach(function(el) {
+        el.classList.remove('show');
+    });
+    if (!isOpen) {
+        menu.classList.add('show');
+        var rect = e.currentTarget.getBoundingClientRect();
+        var menuWidth = 220;
+        var top = rect.bottom + 6;
+        var left = rect.right - menuWidth;
+        if (left < 10) left = 10;
+        menu.style.top = top + 'px';
+        menu.style.left = left + 'px';
+    }
+}
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown-menu-custom')) {
+        document.querySelectorAll('.dropdown-menu-custom').forEach(function(el) {
+            el.classList.remove('show');
+        });
+    }
+});
+window.addEventListener('resize', function() {
+    document.querySelectorAll('.dropdown-menu-custom').forEach(function(el) {
+        el.classList.remove('show');
+    });
+});
+window.addEventListener('scroll', function() {
+    document.querySelectorAll('.dropdown-menu-custom').forEach(function(el) {
+        el.classList.remove('show');
+    });
+}, true);
 
 // ─── Global Button Loading States for Forms ───────────────────────────────────
 document.addEventListener('DOMContentLoaded', function() {

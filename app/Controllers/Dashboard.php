@@ -40,8 +40,18 @@ class Dashboard extends BaseController
         return view('dashboard/index', $data);
     }
 
-    public function monitoring(int $examId)
+    public function monitoring(?int $examId = null)
     {
+        if (!$examId) {
+            $active = \App\Libraries\ExamContext::getActiveExam();
+            if ($active) {
+                return redirect()->to(base_url('dashboard/monitoring/' . $active['id']));
+            }
+            return redirect()->to(base_url('exam'))->with('error', 'Silakan buat paket ujian terlebih dahulu.');
+        }
+
+        \App\Libraries\ExamContext::setActiveExam($examId);
+
         $examModel      = new ExamModel();
         $quizModel      = new MoodleQuizModel();
         $violationModel = new MoodleViolationModel();

@@ -25,15 +25,19 @@
                     <th>Periode Tanggal</th>
                     <th>Status</th>
                     <th>Jml Mapel</th>
-                    <th style="min-width:320px">Aksi & Fitur CBT</th>
+                    <th style="width:230px;text-align:right">Aksi</th>
                 </tr>
             </thead>
             <tbody>
                 <?php $i = 1; foreach($exams as $e): ?>
-                <tr>
+                <?php $isCurrent = ($activeExam && $activeExam['id'] == $e['id']); ?>
+                <tr <?= $isCurrent ? 'style="background:rgba(99,102,241,0.05)"' : '' ?>>
                     <td><?= $i++ ?></td>
                     <td>
                         <strong><?= esc($e['nama_ujian']) ?></strong>
+                        <?php if($isCurrent): ?>
+                            <span class="badge badge-aktif" style="font-size:10px;margin-left:6px"><i class="fas fa-check-circle"></i> Terpilih</span>
+                        <?php endif; ?>
                         <?php if(!empty($e['keterangan'])): ?>
                             <br><small style="color:var(--muted)"><?= esc($e['keterangan']) ?></small>
                         <?php endif; ?>
@@ -52,38 +56,41 @@
                     <td>
                         <span class="badge badge-draft"><?= $e['jml_mapel'] ?? 0 ?> Mapel</span>
                     </td>
-                    <td>
-                        <div style="display:flex;gap:5px;flex-wrap:wrap">
+                    <td style="text-align:right">
+                        <div style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-end">
                             <a href="<?= base_url('exam/subjects/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Atur Mata Pelajaran">
                                 <i class="fas fa-book"></i> Mapel
                             </a>
-                            <a href="<?= base_url('participant/'.$e['id']) ?>" class="btn btn-sm btn-primary" title="Kelola Peserta & Ruang">
-                                <i class="fas fa-users"></i> Peserta
+                            <a href="<?= base_url('exam/set-active/'.$e['id']) ?>" class="btn btn-sm <?= $isCurrent ? 'btn-success' : 'btn-primary' ?>" title="Pilih & Buka Pelaksanaan CBT">
+                                <i class="fas fa-play-circle"></i> <?= $isCurrent ? 'Buka CBT' : 'Pilih CBT' ?>
                             </a>
-                            <a href="<?= base_url('token/'.$e['id']) ?>" class="btn btn-sm btn-warning" style="color:#000;font-weight:600" title="Rilis Token CBT">
-                                <i class="fas fa-key"></i> Token
-                            </a>
-                            <a href="<?= base_url('supervisor/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Pengawas Ruang">
-                                <i class="fas fa-user-shield"></i> Pengawas
-                            </a>
-                            <a href="<?= base_url('dashboard/monitoring/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Live Monitoring Ujian">
-                                <i class="fas fa-desktop"></i> Monitor
-                            </a>
-                            <a href="<?= base_url('grade/'.$e['id']) ?>" class="btn btn-sm btn-success" title="Download & Rekap Nilai">
-                                <i class="fas fa-chart-bar"></i> Nilai
-                            </a>
-                            <a href="<?= base_url('analysis/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Analisis Butir Soal">
-                                <i class="fas fa-chart-pie"></i> Analisis
-                            </a>
-                            <a href="<?= base_url('attendance/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Daftar Hadir Ujian">
-                                <i class="fas fa-check-square"></i> Hadir
-                            </a>
-                            <a href="<?= base_url('room/denah/'.$e['id']) ?>" class="btn btn-sm btn-outline" style="color:var(--accent);border-color:rgba(99,102,241,0.3)" title="Denah Meja Ruangan">
-                                <i class="fas fa-th-large"></i> Denah
-                            </a>
-                            <a href="<?= base_url('minutes/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Berita Acara">
-                                <i class="fas fa-file-alt"></i> BA
-                            </a>
+
+                            <!-- Dropdown Akses Cepat Fitur CBT -->
+                            <div style="position:relative;display:inline-block">
+                                <button type="button" class="btn btn-sm btn-outline" onclick="toggleDropdown(event, 'drop_<?= $e['id'] ?>')" title="Akses Cepat Fitur CBT">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <div id="drop_<?= $e['id'] ?>" class="dropdown-menu-custom">
+                                    <div style="padding:6px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:1px solid rgba(255,255,255,0.06)">
+                                        Pelaksanaan CBT
+                                    </div>
+                                    <a href="<?= base_url('participant/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-users" style="width:20px;color:var(--accent)"></i> Peserta &amp; Kartu</a>
+                                    <a href="<?= base_url('token/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-key" style="width:20px;color:#f59e0b"></i> Rilis Token CBT</a>
+                                    <a href="<?= base_url('supervisor/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-user-shield" style="width:20px;color:#38bdf8"></i> Pengawas &amp; Proktor</a>
+                                    <a href="<?= base_url('dashboard/monitoring/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-desktop" style="width:20px;color:#a855f7"></i> Live Monitoring</a>
+                                    <a href="<?= base_url('attendance/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-check-square" style="width:20px;color:#10b981"></i> Daftar Hadir</a>
+                                    <a href="<?= base_url('minutes/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-file-alt" style="width:20px;color:#f97316"></i> Berita Acara</a>
+                                    <a href="<?= base_url('room/denah/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-th-large" style="width:20px;color:#818cf8"></i> Denah Ruangan</a>
+                                    
+                                    <div style="margin:4px 0;border-top:1px solid rgba(255,255,255,0.06)"></div>
+                                    <div style="padding:6px 14px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px">
+                                        Pelaporan &amp; Analisis
+                                    </div>
+                                    <a href="<?= base_url('grade/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-chart-bar" style="width:20px;color:#10b981"></i> Download Nilai</a>
+                                    <a href="<?= base_url('analysis/'.$e['id']) ?>" class="dropdown-item-custom"><i class="fas fa-chart-pie" style="width:20px;color:#06b6d4"></i> Analisis Butir Soal</a>
+                                </div>
+                            </div>
+
                             <a href="<?= base_url('exam/edit/'.$e['id']) ?>" class="btn btn-sm btn-outline" title="Edit Ujian">
                                 <i class="fas fa-edit"></i>
                             </a>

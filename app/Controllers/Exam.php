@@ -77,4 +77,48 @@ class Exam extends BaseController
         $this->subjectModel->delete($id);
         return redirect()->to(base_url("exam/subjects/{$subject['exam_id']}"))->with('success', 'Mapel dihapus!');
     }
+
+    /**
+     * Set paket ujian aktif & alihkan ke menu pelaksanaan CBT
+     */
+    public function setActive(int $id)
+    {
+        $exam = $this->examModel->find($id);
+        if (!$exam) {
+            return redirect()->to(base_url('exam'))->with('error', 'Paket ujian tidak ditemukan!');
+        }
+
+        \App\Libraries\ExamContext::setActiveExam($id);
+
+        $to = $this->request->getGet('to');
+        if ($to && in_array($to, ['monitoring', 'participant', 'token', 'supervisor', 'attendance', 'minutes', 'grade', 'analysis'])) {
+            if ($to === 'monitoring') {
+                return redirect()->to(base_url('dashboard/monitoring/' . $id));
+            }
+            return redirect()->to(base_url($to . '/' . $id));
+        }
+
+        // Cek referrer jika user mengganti ujian dari halaman sub-fitur
+        $ref = $this->request->getServer('HTTP_REFERER');
+        if ($ref && str_contains($ref, base_url())) {
+            $subPages = [
+                'dashboard/monitoring',
+                'participant',
+                'token',
+                'supervisor',
+                'attendance',
+                'minutes',
+                'grade',
+                'analysis',
+                'room/denah'
+            ];
+            foreach ($subPages as $sub) {
+                if (str_contains($ref, '/' . $sub)) {
+                    return redirect()->to(base_url($sub . '/' . $id))->with('success', 'Paket ujian dialihkan ke: ' . $exam['nama_ujian']);
+                }
+            }
+        }
+
+        return redirect()->to(base_url('participant/' . $id))->with('success', 'Paket ujian aktif: ' . $exam['nama_ujian']);
+    }
 }

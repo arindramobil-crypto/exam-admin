@@ -9,8 +9,18 @@ use Mpdf\Mpdf;
 
 class Grade extends BaseController
 {
-    public function index(int $examId)
+    public function index(?int $examId = null)
     {
+        if (!$examId) {
+            $active = \App\Libraries\ExamContext::getActiveExam();
+            if ($active) {
+                return redirect()->to(base_url('grade/' . $active['id']));
+            }
+            return redirect()->to(base_url('exam'))->with('error', 'Silakan buat paket ujian terlebih dahulu.');
+        }
+
+        \App\Libraries\ExamContext::setActiveExam($examId);
+
         $exam     = (new ExamModel())->find($examId);
         $subjects = (new ExamSubjectModel())->where('exam_id', $examId)->findAll();
         return view('grade/index', compact('exam', 'subjects') + ['title' => 'Download Nilai']);
