@@ -245,6 +245,25 @@ class MoodleUserModel extends Model
     }
 
     /**
+     * Update password akun siswa di Moodle secara langsung
+     */
+    public function updatePassword(int $userId, string $newPassword): bool
+    {
+        try {
+            if (!$userId || empty($newPassword)) return false;
+            $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
+            $this->db->table('user')->where('id', $userId)->update([
+                'password'     => $hashed,
+                'timemodified' => time(),
+            ]);
+            return true;
+        } catch (Throwable $e) {
+            log_message('error', 'MoodleUserModel::updatePassword error: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Dapatkan ID kohor berdasarkan nama kelas, atau buat baru di Moodle jika belum ada
      */
     public function getOrCreateCohort(string $className): ?int

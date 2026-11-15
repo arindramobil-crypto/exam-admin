@@ -90,6 +90,10 @@ $chunks = array_chunk($participants, 6);
                         <td class="info-val">: <?= esc($p['nomor_peserta']) ?></td>
                     </tr>
                     <tr>
+                        <td class="info-label">Username CBT</td>
+                        <td class="info-val" style="color:#0369a1;font-family:monospace">: <?= esc(strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $p['nis'] ?: $p['nomor_peserta']))) ?></td>
+                    </tr>
+                    <tr>
                         <td class="info-label">Nama Siswa</td>
                         <td class="info-val">: <?= esc($p['nama']) ?></td>
                     </tr>

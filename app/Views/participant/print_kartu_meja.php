@@ -251,6 +251,11 @@ $logoUrl = (!empty($settings['logo']) && file_exists(FCPATH . $settings['logo'])
                         <span class="info-value" style="color:#4338ca"><?= esc($p['nomor_peserta']) ?></span>
                     </div>
                     <div class="info-row">
+                        <span class="info-label">Username CBT</span>
+                        <span class="info-separator">:</span>
+                        <span class="info-value" style="color:#0369a1;font-family:'JetBrains Mono',monospace"><?= esc(strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $p['nis'] ?: $p['nomor_peserta']))) ?></span>
+                    </div>
+                    <div class="info-row">
                         <span class="info-label">Nama Siswa</span>
                         <span class="info-separator">:</span>
                         <span class="info-value"><?= esc($p['nama']) ?></span>

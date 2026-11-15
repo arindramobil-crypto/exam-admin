@@ -298,6 +298,9 @@ $nipPejabat = $isKepsek ? ($settings['nip_kepala_sekolah'] ?? '') : ($settings['
 
                 <div class="kartu-body">
                     <div class="student-info">
+                        <?php
+                            $cbtUser = strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $p['nis'] ?: $p['nomor_peserta']));
+                        ?>
                         <div class="info-row">
                             <span class="info-label">No. Peserta</span>
                             <span class="info-separator">:</span>
@@ -312,6 +315,11 @@ $nipPejabat = $isKepsek ? ($settings['nip_kepala_sekolah'] ?? '') : ($settings['
                             <span class="info-label">NIS / NISN</span>
                             <span class="info-separator">:</span>
                             <span class="info-value" style="font-weight:normal"><?= esc($p['nis'] ?: '-') ?> <?= !empty($p['nisn']) ? '/ ' . esc($p['nisn']) : '' ?></span>
+                        </div>
+                        <div class="info-row" style="background:#e0e7ff;padding:1px 5px;border-radius:4px;margin:2px 0;border:1px solid #c7d2fe">
+                            <span class="info-label" style="font-weight:700;color:#3730a3">Username</span>
+                            <span class="info-separator">:</span>
+                            <span class="info-value" style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:#1e1b4b"><?= esc($cbtUser) ?></span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Kelas</span>

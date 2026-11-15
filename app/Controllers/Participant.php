@@ -724,13 +724,27 @@ class Participant extends BaseController
             return redirect()->back()->with('error', 'Data peserta kosong!');
         }
 
+        $moodleUserModel = new MoodleUserModel();
         $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $moodleUpdated = 0;
+
         foreach ($participants as $p) {
             $pwd = substr(str_shuffle($chars), 0, 6);
             $pModel->update($p['id'], ['password' => $pwd]);
+
+            // Update password di Moodle langsung jika siswa sudah terhubung ke Moodle
+            if (!empty($p['moodle_user_id'])) {
+                if ($moodleUserModel->updatePassword((int)$p['moodle_user_id'], $pwd)) {
+                    $moodleUpdated++;
+                }
+            }
         }
 
-        return redirect()->to(base_url("participant/{$examId}"))
-            ->with('success', 'Password CBT seluruh peserta (' . count($participants) . ' siswa) berhasil di-generate ulang!');
+        $msg = 'Password CBT seluruh peserta (' . count($participants) . ' siswa) berhasil di-generate ulang!';
+        if ($moodleUpdated > 0) {
+            $msg .= " ($moodleUpdated akun di Moodle otomatis diperbarui password-nya).";
+        }
+
+        return redirect()->to(base_url("participant/{$examId}"))->with('success', $msg);
     }
 }
