@@ -68,7 +68,7 @@
     </div>
 
     <!-- Kiosk Anti-Cheat Live Stats & Proctor PIN -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px">
         <div class="stat-card" style="border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.03)">
             <div class="stat-label" style="color:#f87171">Pelanggaran Tab/Aplikasi</div>
             <div class="stat-value" style="color:#ef4444"><?= $totalViolations ?></div>
@@ -98,22 +98,46 @@
         </div>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:24px">
+    <!-- Dropdown Filter Pemilih Mapel -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px">
+                <i class="fas fa-book-open" style="color:var(--accent)"></i> Tampilkan Mapel:
+            </span>
+            <div style="position:relative">
+                <select id="filterSubjectDropdown" onchange="changeSubjectFilter(this.value)" style="background:var(--surface2, #1e293b);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:#fff;font-size:13px;font-weight:600;outline:none;cursor:pointer;min-width:240px">
+                    <option value="all">📚 Tampilkan Semua Mapel (<?= count($monitoring) ?> Mapel)</option>
+                    <?php foreach($monitoring as $m_opt): ?>
+                        <?php $s_opt = $m_opt['subject']; ?>
+                        <option value="<?= $s_opt['id'] ?>">
+                            <?= esc($s_opt['nama_mapel']) ?> (Kelas: <?= esc($s_opt['kelas']) ?> &bull; Quiz #<?= $s_opt['moodle_quiz_id'] ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px">
+            <i class="fas fa-check-circle" style="color:var(--success)"></i>
+            <span>Pilihan tersimpan otomatis saat auto-refresh</span>
+        </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:24px" id="monitoringSubjectsContainer">
         <?php foreach($monitoring as $m): ?>
             <?php
-                $sub    = $m['subject'];
-                $total  = $m['total'];
+                $sub     = $m['subject'];
+                $total   = $m['total'];
                 $selesai = $m['selesai'];
-                $belum  = $m['belum'];
-                $pct    = $total > 0 ? round(($selesai / $total) * 100) : 0;
+                $belum   = $m['belum'];
+                $pct     = $total > 0 ? round(($selesai / $total) * 100) : 0;
                 $barColor = $pct >= 80 ? 'var(--success)' : ($pct >= 40 ? 'var(--warning)' : 'var(--danger)');
             ?>
-            <div class="card">
-                <div class="card-header" style="background:var(--surface2)">
-                    <div>
+            <div class="card card-monitoring-subject" id="card-subject-<?= $sub['id'] ?>">
+                <div class="card-header" style="background:var(--surface2);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                         <span style="font-weight:700;font-size:16px;color:#fff"><?= esc($sub['nama_mapel']) ?></span>
-                        <span class="badge badge-draft" style="margin-left:8px">Kelas: <?= esc($sub['kelas']) ?></span>
-                        <span class="badge badge-aktif" style="margin-left:4px">Quiz #<?= $sub['moodle_quiz_id'] ?></span>
+                        <span class="badge badge-draft">Kelas: <?= esc($sub['kelas']) ?></span>
+                        <span class="badge badge-aktif">Quiz #<?= $sub['moodle_quiz_id'] ?></span>
                     </div>
                     <div style="display:flex;gap:8px">
                         <a href="<?= base_url('grade/view/'.$exam['id'].'/'.$sub['id']) ?>" class="btn btn-sm btn-primary">
@@ -122,7 +146,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Stats -->
+                    <!-- Stats per mapel -->
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px">
                         <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px">
                             <div style="font-size:11px;color:var(--muted)">Memulai Ujian</div>
@@ -154,16 +178,37 @@
                     <?php if(empty($m['attempts'])): ?>
                         <p style="color:var(--muted);font-size:13px;font-style:italic">Belum ada siswa yang memulai quiz ini di Moodle.</p>
                     <?php else: ?>
-                        <!-- Filter tabel per status -->
-                        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-                            <button onclick="filterTable('<?= $sub['id'] ?>', 'all')" class="btn btn-sm btn-outline filter-btn active" data-quiz="<?= $sub['id'] ?>" data-filter="all">Semua (<?= $total ?>)</button>
-                            <button onclick="filterTable('<?= $sub['id'] ?>', 'inprogress')" class="btn btn-sm btn-outline filter-btn" data-quiz="<?= $sub['id'] ?>" data-filter="inprogress" style="color:var(--warning);border-color:rgba(245,158,11,.3)">
-                                <i class="fas fa-spinner"></i> Mengerjakan (<?= $belum ?>)
-                            </button>
-                            <button onclick="filterTable('<?= $sub['id'] ?>', 'finished')" class="btn btn-sm btn-outline filter-btn" data-quiz="<?= $sub['id'] ?>" data-filter="finished" style="color:var(--success);border-color:rgba(16,185,129,.3)">
-                                <i class="fas fa-check"></i> Selesai (<?= $selesai ?>)
-                            </button>
+                        <!-- Toolbar: Filter Status + Search + Dropdown Page Size -->
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;background:rgba(255,255,255,0.02);padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,0.05)">
+                            <!-- Status filter buttons -->
+                            <div style="display:flex;gap:6px;flex-wrap:wrap">
+                                <button onclick="setTableFilter('<?= $sub['id'] ?>', 'all')" class="btn btn-sm btn-outline filter-btn-<?= $sub['id'] ?> active" data-filter="all">Semua (<?= $total ?>)</button>
+                                <button onclick="setTableFilter('<?= $sub['id'] ?>', 'inprogress')" class="btn btn-sm btn-outline filter-btn-<?= $sub['id'] ?>" data-filter="inprogress" style="color:var(--warning);border-color:rgba(245,158,11,.3)">
+                                    <i class="fas fa-spinner"></i> Mengerjakan (<?= $belum ?>)
+                                </button>
+                                <button onclick="setTableFilter('<?= $sub['id'] ?>', 'finished')" class="btn btn-sm btn-outline filter-btn-<?= $sub['id'] ?>" data-filter="finished" style="color:var(--success);border-color:rgba(16,185,129,.3)">
+                                    <i class="fas fa-check"></i> Selesai (<?= $selesai ?>)
+                                </button>
+                            </div>
+
+                            <!-- Search box & Page size selector -->
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                                <div style="position:relative">
+                                    <i class="fas fa-search" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px"></i>
+                                    <input type="text" id="search-<?= $sub['id'] ?>" onkeyup="searchTable('<?= $sub['id'] ?>')" placeholder="Cari nama / NIS..." style="padding:6px 12px 6px 30px;background:var(--surface2, #1e293b);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:12px;outline:none;width:180px">
+                                </div>
+                                <div style="display:flex;align-items:center;gap:6px">
+                                    <span style="font-size:12px;color:var(--muted)">Tampil:</span>
+                                    <select id="pagesize-<?= $sub['id'] ?>" onchange="changePageSize('<?= $sub['id'] ?>', this.value)" style="padding:6px 10px;background:var(--surface2, #1e293b);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:12px;outline:none;cursor:pointer">
+                                        <option value="10" selected>10 baris</option>
+                                        <option value="25">25 baris</option>
+                                        <option value="50">50 baris</option>
+                                        <option value="all">Semua Siswa</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
+
                         <div class="table-wrap">
                             <table id="table-<?= $sub['id'] ?>">
                                 <thead>
@@ -252,6 +297,16 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Pagination Footer -->
+                        <div id="pagination-wrapper-<?= $sub['id'] ?>" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)">
+                            <div id="pageinfo-<?= $sub['id'] ?>" style="font-size:12px;color:var(--muted)">
+                                Menampilkan 1 - 10 dari <?= $total ?> siswa
+                            </div>
+                            <div id="pagenav-<?= $sub['id'] ?>" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+                                <!-- Tombol halaman di-render otomatis oleh JS -->
+                            </div>
+                        </div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -267,8 +322,20 @@
                 </span>
                 <span class="badge badge-draft" style="margin-left:8px"><?= count($recentViolations) ?> Aktivitas Terakhir</span>
             </div>
-            <div style="font-size:12px;color:var(--muted)">
-                PIN Buka Kunci Pengawas: <strong style="color:#10b981;font-family:monospace;letter-spacing:1px"><?= esc($proctorPin) ?></strong>
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                <?php if(count($recentViolations) > 10): ?>
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <span style="font-size:11px;color:var(--muted)">Tampil:</span>
+                        <select id="pagesize-violations" onchange="changePageSize('violations', this.value)" style="padding:4px 8px;background:var(--surface2, #1e293b);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:11px;outline:none;cursor:pointer">
+                            <option value="10" selected>10 baris</option>
+                            <option value="25">25 baris</option>
+                            <option value="all">Semua</option>
+                        </select>
+                    </div>
+                <?php endif; ?>
+                <div style="font-size:12px;color:var(--muted)">
+                    PIN Buka Kunci: <strong style="color:#10b981;font-family:monospace;letter-spacing:1px"><?= esc($proctorPin) ?></strong>
+                </div>
             </div>
         </div>
         <div class="card-body">
@@ -279,7 +346,7 @@
                 </div>
             <?php else: ?>
                 <div class="table-wrap">
-                    <table>
+                    <table id="table-violations">
                         <thead>
                             <tr>
                                 <th>Waktu</th>
@@ -330,6 +397,12 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination Footer for Violations Log -->
+                <div id="pagination-wrapper-violations" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.06)">
+                    <div id="pageinfo-violations" style="font-size:12px;color:var(--muted)"></div>
+                    <div id="pagenav-violations" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap"></div>
+                </div>
             <?php endif; ?>
         </div>
     </div>
@@ -372,26 +445,205 @@ document.getElementById('refreshInterval').addEventListener('change', function()
 // Default: 30 detik
 startRefresh(30);
 
-// ─── Filter tabel per status ─────────────────────────────────────────────────
-function filterTable(quizId, filter) {
+// ─── Dropdown Filter Mapel (Subject Filter) ──────────────────────────────────
+function changeSubjectFilter(subjectId) {
+    sessionStorage.setItem('monitoring_selected_subject_<?= $exam['id'] ?>', subjectId);
+    var cards = document.querySelectorAll('.card-monitoring-subject');
+    cards.forEach(function(card) {
+        if (subjectId === 'all' || card.id === 'card-subject-' + subjectId) {
+            card.style.display = '';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+// ─── Engine Paginasi & Pencarian Tabel Monitoring Siswa ──────────────────────
+var monitoringTables = {};
+
+function initMonitoringTable(quizId) {
     var table = document.getElementById('table-' + quizId);
     if (!table) return;
 
-    // Update tombol aktif
-    document.querySelectorAll('.filter-btn[data-quiz="' + quizId + '"]').forEach(function(btn) {
-        btn.style.opacity = btn.dataset.filter === filter ? '1' : '0.5';
-        btn.style.fontWeight = btn.dataset.filter === filter ? '700' : '400';
+    var rows = Array.from(table.querySelectorAll('tbody tr'));
+    
+    // Check if preferences already exist in sessionStorage
+    var savedPageSize = sessionStorage.getItem('monitoring_pagesize_' + quizId) || '10';
+    var savedFilterState = sessionStorage.getItem('monitoring_filterstate_' + quizId) || 'all';
+
+    monitoringTables[quizId] = {
+        rows: rows,
+        currentPage: 1,
+        pageSize: savedPageSize === 'all' ? 'all' : parseInt(savedPageSize),
+        filterState: savedFilterState,
+        searchQuery: ''
+    };
+
+    var psSelect = document.getElementById('pagesize-' + quizId);
+    if (psSelect) psSelect.value = savedPageSize;
+
+    updateFilterButtons(quizId, savedFilterState);
+    renderMonitoringTable(quizId);
+}
+
+function renderMonitoringTable(quizId) {
+    var state = monitoringTables[quizId];
+    if (!state) return;
+
+    // Filter baris berdasarkan state status dan search query
+    var filteredRows = state.rows.filter(function(row) {
+        var rowState = row.getAttribute('data-state');
+        var stateMatch = (!rowState || state.filterState === 'all' || rowState === state.filterState);
+        
+        var queryMatch = true;
+        if (state.searchQuery) {
+            var text = row.innerText.toLowerCase();
+            queryMatch = text.indexOf(state.searchQuery.toLowerCase()) !== -1;
+        }
+
+        return stateMatch && queryMatch;
     });
 
-    // Tampilkan/sembunyikan baris
-    table.querySelectorAll('tbody tr').forEach(function(row) {
-        var state = row.getAttribute('data-state');
-        if (filter === 'all' || state === filter) {
-            row.style.display = '';
+    var totalFiltered = filteredRows.length;
+    var pageSize = state.pageSize === 'all' ? (totalFiltered || 1) : state.pageSize;
+    var totalPages = Math.ceil(totalFiltered / pageSize);
+    if (totalPages < 1) totalPages = 1;
+
+    if (state.currentPage > totalPages) {
+        state.currentPage = totalPages;
+    }
+    if (state.currentPage < 1) {
+        state.currentPage = 1;
+    }
+
+    var startIndex = (state.currentPage - 1) * pageSize;
+    var endIndex = state.pageSize === 'all' ? totalFiltered : Math.min(startIndex + pageSize, totalFiltered);
+
+    // Sembunyikan semua baris terlebih dahulu
+    state.rows.forEach(function(row) {
+        row.style.display = 'none';
+    });
+
+    // Tampilkan hanya baris pada halaman aktif
+    for (var i = startIndex; i < endIndex; i++) {
+        if (filteredRows[i]) {
+            filteredRows[i].style.display = '';
+        }
+    }
+
+    // Info Halaman
+    var infoEl = document.getElementById('pageinfo-' + quizId);
+    if (infoEl) {
+        if (totalFiltered === 0) {
+            infoEl.innerHTML = '<span style="color:var(--muted)">Tidak ada data siswa yang sesuai filter/pencarian.</span>';
         } else {
-            row.style.display = 'none';
+            var isFiltered = (state.searchQuery || state.filterState !== 'all');
+            var filterBadge = isFiltered ? ' <span class="badge badge-draft" style="font-size:10px">Disaring</span>' : '';
+            infoEl.innerHTML = 'Menampilkan <strong>' + (startIndex + 1) + ' &ndash; ' + endIndex + '</strong> dari <strong>' + totalFiltered + '</strong> ' + (quizId === 'violations' ? 'aktivitas' : 'siswa') + filterBadge;
+        }
+    }
+
+    // Tombol Navigasi Halaman
+    var navEl = document.getElementById('pagenav-' + quizId);
+    if (navEl) {
+        if (totalPages <= 1 || state.pageSize === 'all') {
+            navEl.innerHTML = '';
+        } else {
+            var html = '';
+            
+            // Prev button
+            var prevDisabled = (state.currentPage <= 1);
+            html += '<button type="button" class="btn btn-sm btn-outline" ' +
+                    (prevDisabled ? 'disabled style="opacity:0.35;cursor:not-allowed;padding:4px 8px"' : 'onclick="goToPage(\'' + quizId + '\', ' + (state.currentPage - 1) + ')" style="padding:4px 8px"') +
+                    '><i class="fas fa-chevron-left"></i> Prev</button>';
+
+            // Page numbers
+            var maxButtons = 5;
+            var startP = Math.max(1, state.currentPage - 2);
+            var endP = Math.min(totalPages, startP + maxButtons - 1);
+            if (endP - startP < maxButtons - 1) {
+                startP = Math.max(1, endP - maxButtons + 1);
+            }
+
+            if (startP > 1) {
+                html += '<button type="button" class="btn btn-sm btn-outline" style="min-width:30px;padding:4px 6px" onclick="goToPage(\'' + quizId + '\', 1)">1</button>';
+                if (startP > 2) html += '<span style="color:var(--muted);padding:0 2px">&hellip;</span>';
+            }
+
+            for (var p = startP; p <= endP; p++) {
+                var isActive = (p === state.currentPage);
+                html += '<button type="button" class="btn btn-sm ' + (isActive ? 'btn-primary' : 'btn-outline') + '" ' +
+                        'style="min-width:30px;padding:4px 6px;font-weight:' + (isActive ? '700' : '400') + '" ' +
+                        'onclick="goToPage(\'' + quizId + '\', ' + p + ')">' + p + '</button>';
+            }
+
+            if (endP < totalPages) {
+                if (endP < totalPages - 1) html += '<span style="color:var(--muted);padding:0 2px">&hellip;</span>';
+                html += '<button type="button" class="btn btn-sm btn-outline" style="min-width:30px;padding:4px 6px" onclick="goToPage(\'' + quizId + '\', ' + totalPages + ')">' + totalPages + '</button>';
+            }
+
+            // Next button
+            var nextDisabled = (state.currentPage >= totalPages);
+            html += '<button type="button" class="btn btn-sm btn-outline" ' +
+                    (nextDisabled ? 'disabled style="opacity:0.35;cursor:not-allowed;padding:4px 8px"' : 'onclick="goToPage(\'' + quizId + '\', ' + (state.currentPage + 1) + ')" style="padding:4px 8px"') +
+                    '>Next <i class="fas fa-chevron-right"></i></button>';
+
+            navEl.innerHTML = html;
+        }
+    }
+}
+
+function goToPage(quizId, page) {
+    if (monitoringTables[quizId]) {
+        monitoringTables[quizId].currentPage = page;
+        renderMonitoringTable(quizId);
+    }
+}
+
+function changePageSize(quizId, size) {
+    if (monitoringTables[quizId]) {
+        sessionStorage.setItem('monitoring_pagesize_' + quizId, size);
+        monitoringTables[quizId].pageSize = size === 'all' ? 'all' : parseInt(size);
+        monitoringTables[quizId].currentPage = 1;
+        renderMonitoringTable(quizId);
+    }
+}
+
+function searchTable(quizId) {
+    var input = document.getElementById('search-' + quizId);
+    if (!input || !monitoringTables[quizId]) return;
+    monitoringTables[quizId].searchQuery = input.value.trim();
+    monitoringTables[quizId].currentPage = 1;
+    renderMonitoringTable(quizId);
+}
+
+function updateFilterButtons(quizId, filter) {
+    document.querySelectorAll('.filter-btn-' + quizId).forEach(function(btn) {
+        var f = btn.getAttribute('data-filter');
+        if (f === filter) {
+            btn.classList.add('active');
+            btn.style.opacity = '1';
+            btn.style.fontWeight = '700';
+        } else {
+            btn.classList.remove('active');
+            btn.style.opacity = '0.55';
+            btn.style.fontWeight = '400';
         }
     });
+}
+
+function setTableFilter(quizId, filter) {
+    if (!monitoringTables[quizId]) return;
+    sessionStorage.setItem('monitoring_filterstate_' + quizId, filter);
+    monitoringTables[quizId].filterState = filter;
+    monitoringTables[quizId].currentPage = 1;
+    updateFilterButtons(quizId, filter);
+    renderMonitoringTable(quizId);
+}
+
+// Alias untuk backward compatibility
+function filterTable(quizId, filter) {
+    setTableFilter(quizId, filter);
 }
 
 // ─── Buka Kunci Siswa Jarak Jauh (Remote Unlock) ──────────────────────────────
@@ -432,6 +684,31 @@ function closeProctorPinModal() {
     var m = document.getElementById('modalProctorPin');
     if (m) m.style.display = 'none';
 }
+
+// Inisialisasi semua tabel saat DOM siap
+document.addEventListener('DOMContentLoaded', function() {
+    // 1. Pulihkan filter dropdown mapel jika sebelumnya sudah dipilih
+    var savedSubject = sessionStorage.getItem('monitoring_selected_subject_<?= $exam['id'] ?>');
+    var subjectDropdown = document.getElementById('filterSubjectDropdown');
+    if (savedSubject && subjectDropdown) {
+        if (subjectDropdown.querySelector('option[value="' + savedSubject + '"]')) {
+            subjectDropdown.value = savedSubject;
+            changeSubjectFilter(savedSubject);
+        }
+    }
+
+    // 2. Inisialisasi paginasi pada masing-masing tabel mapel
+    <?php foreach($monitoring as $m_init): ?>
+        <?php if(!empty($m_init['attempts'])): ?>
+            initMonitoringTable('<?= $m_init['subject']['id'] ?>');
+        <?php endif; ?>
+    <?php endforeach; ?>
+
+    // 3. Inisialisasi paginasi pada tabel log audit jika ada data
+    <?php if(!empty($recentViolations)): ?>
+        initMonitoringTable('violations');
+    <?php endif; ?>
+});
 </script>
 
 <!-- Modal Ubah PIN Pengawas -->
