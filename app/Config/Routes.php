@@ -16,6 +16,8 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('dashboard/monitoring', 'Dashboard::monitoring');
     $routes->get('dashboard/monitoring/(:num)', 'Dashboard::monitoring/$1');
     $routes->post('dashboard/remote-unlock/(:num)', 'Dashboard::remoteUnlock/$1');
+    $routes->post('dashboard/reset-violations/(:num)', 'Dashboard::resetViolations/$1');
+    $routes->post('dashboard/reset-quiz-attempts/(:num)/(:num)', 'Dashboard::resetQuizAttempts/$1/$2');
 
     // Exam
     $routes->get('exam', 'Exam::index');

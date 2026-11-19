@@ -122,5 +122,25 @@ class MoodleViolationModel extends Model
             return false;
         }
     }
+
+    /**
+     * Delete/reset all violation logs for a list of quiz IDs
+     */
+    public function resetViolationsByQuizIds(array $quizIds): bool
+    {
+        if (empty($quizIds)) {
+            return false;
+        }
+
+        try {
+            $this->db->table('local_cbt_kiosk_logs')
+                ->whereIn('quizid', $quizIds)
+                ->delete();
+            return true;
+        } catch (Throwable $e) {
+            log_message('error', 'MoodleViolationModel::resetViolationsByQuizIds failed: ' . $e->getMessage());
+            return false;
+        }
+    }
 }
 

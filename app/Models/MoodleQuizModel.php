@@ -72,4 +72,19 @@ class MoodleQuizModel extends Model
             return null;
         }
     }
+
+    /**
+     * Reset all student attempts and grades for a specific quiz in Moodle
+     */
+    public function resetQuizAttempts(int $quizId): bool
+    {
+        try {
+            $this->db->table('quiz_attempts')->where('quiz', $quizId)->delete();
+            $this->db->table('quiz_grades')->where('quiz', $quizId)->delete();
+            return true;
+        } catch (Throwable $e) {
+            log_message('error', 'MoodleQuizModel::resetQuizAttempts failed: ' . $e->getMessage());
+            return false;
+        }
+    }
 }

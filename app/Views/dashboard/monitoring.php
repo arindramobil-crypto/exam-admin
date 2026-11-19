@@ -37,6 +37,30 @@
         </div>
     </div>
 <?php else: ?>
+    <?php if(($exam['status'] ?? '') === 'selesai'): ?>
+        <div style="background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.3);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:38px;height:38px;border-radius:50%;background:rgba(59,130,246,0.2);display:flex;align-items:center;justify-content:center;color:#60a5fa;font-size:16px">
+                    <i class="fas fa-flag-checkered"></i>
+                </div>
+                <div>
+                    <h5 style="color:#fff;margin:0 0 4px;font-size:14px;font-weight:700">Paket Ujian Ini Berstatus: SELESAI</h5>
+                    <p style="color:#93c5fd;margin:0;font-size:12px">Sesi ujian telah berakhir. Rekap nilai dapat diunduh, atau Anda dapat mereset riwayat aktivitas jika kuis ini ingin digunakan kembali.</p>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+                <a href="<?= base_url('grade/summary/' . $exam['id']) ?>" class="btn btn-sm btn-primary">
+                    <i class="fas fa-file-excel"></i> Rekap Nilai Gabungan
+                </a>
+                <?php if(!empty($recentViolations)): ?>
+                    <button type="button" onclick="openResetLogsModal()" class="btn btn-sm btn-outline" style="color:#f87171;border-color:rgba(239,68,68,0.4)">
+                        <i class="fas fa-trash-alt"></i> Bersihkan Log Pelanggaran
+                    </button>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <!-- Ringkasan global pengerjaan & Kiosk Anti-Cheat -->
     <?php
         $totalGlobal   = array_sum(array_column($monitoring, 'total'));
@@ -139,10 +163,15 @@
                         <span class="badge badge-draft">Kelas: <?= esc($sub['kelas']) ?></span>
                         <span class="badge badge-aktif">Quiz #<?= $sub['moodle_quiz_id'] ?></span>
                     </div>
-                    <div style="display:flex;gap:8px">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
                         <a href="<?= base_url('grade/view/'.$exam['id'].'/'.$sub['id']) ?>" class="btn btn-sm btn-primary">
                             <i class="fas fa-chart-bar"></i> Rekap Nilai
                         </a>
+                        <?php if(!empty($m['attempts'])): ?>
+                            <button type="button" class="btn btn-sm btn-outline" style="color:#f87171;border-color:rgba(239,68,68,0.35);font-size:12px" onclick="confirmResetAttempts(<?= (int)$sub['moodle_quiz_id'] ?>, '<?= esc($sub['nama_mapel']) ?>')" title="Bersihkan pengerjaan/attempt siswa pada kuis ini (misal setelah gladi bersih)">
+                                <i class="fas fa-undo"></i> Reset Pengerjaan
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="card-body">
@@ -322,7 +351,16 @@
                 </span>
                 <span class="badge badge-draft" style="margin-left:8px"><?= count($recentViolations) ?> Aktivitas Terakhir</span>
             </div>
-            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <!-- Filter Waktu: Hari Ini Saja vs Semua Riwayat -->
+                <div style="display:flex;align-items:center;gap:6px">
+                    <span style="font-size:11px;color:var(--muted)">Waktu:</span>
+                    <select id="timefilter-violations" onchange="changeTimeFilterViolations(this.value)" style="padding:4px 8px;background:var(--surface2, #1e293b);border:1px solid var(--border);border-radius:6px;color:#fff;font-size:11px;outline:none;cursor:pointer">
+                        <option value="today">Hari Ini</option>
+                        <option value="all" selected>Semua Riwayat</option>
+                    </select>
+                </div>
+
                 <?php if(count($recentViolations) > 10): ?>
                     <div style="display:flex;align-items:center;gap:6px">
                         <span style="font-size:11px;color:var(--muted)">Tampil:</span>
@@ -333,9 +371,16 @@
                         </select>
                     </div>
                 <?php endif; ?>
+
                 <div style="font-size:12px;color:var(--muted)">
                     PIN Buka Kunci: <strong style="color:#10b981;font-family:monospace;letter-spacing:1px"><?= esc($proctorPin) ?></strong>
                 </div>
+
+                <?php if(!empty($recentViolations)): ?>
+                    <button type="button" onclick="openResetLogsModal()" class="btn btn-sm btn-outline" style="color:#f87171;border-color:rgba(239,68,68,0.4);font-size:11px;padding:3px 8px" title="Hapus seluruh riwayat log pelanggaran untuk ujian ini">
+                        <i class="fas fa-trash-alt"></i> Bersihkan Log
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
         <div class="card-body">
@@ -361,7 +406,7 @@
                         </thead>
                         <tbody>
                             <?php foreach($recentViolations as $v): ?>
-                            <tr>
+                            <tr data-date="<?= date('Y-m-d', $v['timecreated']) ?>">
                                 <td><small style="color:var(--muted)"><?= date('H:i:s (d/m)', $v['timecreated']) ?></small></td>
                                 <td><strong><?= esc($v['firstname'] . ' ' . $v['lastname']) ?></strong></td>
                                 <td><code><?= esc($v['username']) ?></code></td>
@@ -470,17 +515,24 @@ function initMonitoringTable(quizId) {
     // Check if preferences already exist in sessionStorage
     var savedPageSize = sessionStorage.getItem('monitoring_pagesize_' + quizId) || '10';
     var savedFilterState = sessionStorage.getItem('monitoring_filterstate_' + quizId) || 'all';
+    var savedTimeFilter = sessionStorage.getItem('monitoring_timefilter_' + quizId) || 'all';
 
     monitoringTables[quizId] = {
         rows: rows,
         currentPage: 1,
         pageSize: savedPageSize === 'all' ? 'all' : parseInt(savedPageSize),
         filterState: savedFilterState,
+        timeFilter: savedTimeFilter,
         searchQuery: ''
     };
 
     var psSelect = document.getElementById('pagesize-' + quizId);
     if (psSelect) psSelect.value = savedPageSize;
+
+    if (quizId === 'violations') {
+        var tfSelect = document.getElementById('timefilter-violations');
+        if (tfSelect) tfSelect.value = savedTimeFilter;
+    }
 
     updateFilterButtons(quizId, savedFilterState);
     renderMonitoringTable(quizId);
@@ -490,18 +542,25 @@ function renderMonitoringTable(quizId) {
     var state = monitoringTables[quizId];
     if (!state) return;
 
-    // Filter baris berdasarkan state status dan search query
+    // Filter baris berdasarkan state status, rentang waktu, dan search query
     var filteredRows = state.rows.filter(function(row) {
         var rowState = row.getAttribute('data-state');
         var stateMatch = (!rowState || state.filterState === 'all' || rowState === state.filterState);
         
+        var dateMatch = true;
+        if (quizId === 'violations' && state.timeFilter === 'today') {
+            var rowDate = row.getAttribute('data-date');
+            var todayStr = '<?= date('Y-m-d') ?>';
+            dateMatch = (rowDate === todayStr);
+        }
+
         var queryMatch = true;
         if (state.searchQuery) {
             var text = row.innerText.toLowerCase();
             queryMatch = text.indexOf(state.searchQuery.toLowerCase()) !== -1;
         }
 
-        return stateMatch && queryMatch;
+        return stateMatch && dateMatch && queryMatch;
     });
 
     var totalFiltered = filteredRows.length;
@@ -685,6 +744,37 @@ function closeProctorPinModal() {
     if (m) m.style.display = 'none';
 }
 
+function changeTimeFilterViolations(timeRange) {
+    if (monitoringTables['violations']) {
+        sessionStorage.setItem('monitoring_timefilter_violations', timeRange);
+        monitoringTables['violations'].timeFilter = timeRange;
+        monitoringTables['violations'].currentPage = 1;
+        renderMonitoringTable('violations');
+    }
+}
+
+function openResetLogsModal() {
+    var m = document.getElementById('modalResetLogs');
+    if (m) m.style.display = 'flex';
+}
+function closeResetLogsModal() {
+    var m = document.getElementById('modalResetLogs');
+    if (m) m.style.display = 'none';
+}
+
+function confirmResetAttempts(quizId, subjectName) {
+    var form = document.getElementById('formResetAttempts');
+    var label = document.getElementById('resetAttemptSubjectName');
+    if (form) form.action = '<?= base_url('dashboard/reset-quiz-attempts/' . $exam['id']) ?>/' + quizId;
+    if (label) label.textContent = subjectName + ' (Quiz #' + quizId + ')';
+    var m = document.getElementById('modalResetAttempts');
+    if (m) m.style.display = 'flex';
+}
+function closeResetAttemptsModal() {
+    var m = document.getElementById('modalResetAttempts');
+    if (m) m.style.display = 'none';
+}
+
 // Inisialisasi semua tabel saat DOM siap
 document.addEventListener('DOMContentLoaded', function() {
     // 1. Pulihkan filter dropdown mapel jika sebelumnya sudah dipilih
@@ -729,6 +819,62 @@ document.addEventListener('DOMContentLoaded', function() {
             <div style="display:flex;justify-content:flex-end;gap:8px">
                 <button type="button" onclick="closeProctorPinModal()" class="btn btn-sm btn-outline">Batal</button>
                 <button type="submit" class="btn btn-sm btn-success" style="background:#10b981;border:none"><i class="fas fa-save"></i> Simpan PIN Baru</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Reset Log Pelanggaran Kiosk -->
+<div id="modalResetLogs" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:99999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:var(--card-bg, #1e293b);border:1px solid rgba(239,68,68,0.4);border-radius:14px;padding:24px;max-width:440px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.7)">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(239,68,68,0.15);display:flex;align-items:center;justify-content:center;color:#ef4444;font-size:18px">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <div>
+                <h4 style="margin:0;color:#fff;font-size:16px;font-weight:700">Bersihkan Log Pelanggaran</h4>
+                <small style="color:var(--muted)">Paket: <?= esc($exam['nama_ujian']) ?></small>
+            </div>
+        </div>
+        <p style="color:var(--muted, #94a3b8);font-size:13px;margin:0 0 18px;line-height:1.5">
+            Apakah Anda yakin ingin <strong style="color:#f87171">menghapus seluruh log audit pelanggaran</strong> pada ujian ini?<br><br>
+            Tindakan ini akan mengosongkan riwayat perpindahan tab dan mereset status peringatan siswa kembali ke <strong style="color:#10b981">Aman (0/3)</strong>. Data yang dihapus tidak dapat dikembalikan.
+        </p>
+        <form action="<?= base_url('dashboard/reset-violations/' . $exam['id']) ?>" method="POST">
+            <?= csrf_field() ?>
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+                <button type="button" onclick="closeResetLogsModal()" class="btn btn-sm btn-outline">Batal</button>
+                <button type="submit" class="btn btn-sm" style="background:#ef4444;color:#fff;border:none;padding:6px 14px;font-weight:600">
+                    <i class="fas fa-trash-alt"></i> Ya, Bersihkan Seluruh Log
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal Reset Pengerjaan Kuis di Moodle -->
+<div id="modalResetAttempts" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.65);z-index:99999;align-items:center;justify-content:center;padding:16px">
+    <div style="background:var(--card-bg, #1e293b);border:1px solid rgba(245,158,11,0.4);border-radius:14px;padding:24px;max-width:460px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,0.7)">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <div style="width:40px;height:40px;border-radius:50%;background:rgba(245,158,11,0.15);display:flex;align-items:center;justify-content:center;color:#f59e0b;font-size:18px">
+                <i class="fas fa-undo"></i>
+            </div>
+            <div>
+                <h4 style="margin:0;color:#fff;font-size:16px;font-weight:700">Reset Pengerjaan Siswa di Moodle</h4>
+                <small id="resetAttemptSubjectName" style="color:#f59e0b;font-weight:600"></small>
+            </div>
+        </div>
+        <p style="color:var(--muted, #94a3b8);font-size:13px;margin:0 0 18px;line-height:1.5">
+            Fitur ini digunakan jika Anda telah melakukan <strong>gladi bersih / uji coba</strong> dan ingin membersihkan seluruh lembar jawaban & nilai siswa pada kuis Moodle ini agar kuis bersih kembali siap untuk ujian sesungguhnya.<br><br>
+            <span style="color:#f87171;font-weight:600">Perhatian: Seluruh nilai dan jawaban peserta pada kuis ini di Moodle akan dihapus permanen.</span>
+        </p>
+        <form id="formResetAttempts" action="" method="POST">
+            <?= csrf_field() ?>
+            <div style="display:flex;justify-content:flex-end;gap:8px">
+                <button type="button" onclick="closeResetAttemptsModal()" class="btn btn-sm btn-outline">Batal</button>
+                <button type="submit" class="btn btn-sm" style="background:#f59e0b;color:#000;border:none;font-weight:700;padding:6px 14px">
+                    <i class="fas fa-undo"></i> Ya, Reset Pengerjaan Kuis
+                </button>
             </div>
         </form>
     </div>

@@ -145,4 +145,58 @@ class Dashboard extends BaseController
         return redirect()->to(base_url('dashboard/monitoring/' . $examId))
             ->with('error', "Gagal membuka kunci ujian untuk {$userName}.");
     }
+
+    /**
+     * Reset all violation logs for subjects in this exam
+     */
+    public function resetViolations(int $examId)
+    {
+        $examModel = new ExamModel();
+        $exam = $examModel->find($examId);
+        if (!$exam) {
+            return redirect()->to(base_url('exam'))->with('error', 'Ujian tidak ditemukan!');
+        }
+
+        $subjects = (new ExamSubjectModel())->where('exam_id', $examId)->findAll();
+        $quizIds  = array_filter(array_map('intval', array_column($subjects, 'moodle_quiz_id')));
+
+        if (empty($quizIds)) {
+            return redirect()->to(base_url('dashboard/monitoring/' . $examId))
+                ->with('error', 'Tidak ada kuis Moodle yang tertaut pada ujian ini.');
+        }
+
+        $violationModel = new MoodleViolationModel();
+        $ok = $violationModel->resetViolationsByQuizIds($quizIds);
+
+        if ($ok) {
+            return redirect()->to(base_url('dashboard/monitoring/' . $examId))
+                ->with('success', 'Seluruh log audit pelanggaran untuk ujian ini berhasil dibersihkan.');
+        }
+
+        return redirect()->to(base_url('dashboard/monitoring/' . $examId))
+            ->with('error', 'Gagal membersihkan log pelanggaran.');
+    }
+
+    /**
+     * Reset all student attempts for a specific quiz in Moodle (misal setelah gladi bersih / uji coba)
+     */
+    public function resetQuizAttempts(int $examId, int $quizId)
+    {
+        $examModel = new ExamModel();
+        $exam = $examModel->find($examId);
+        if (!$exam) {
+            return redirect()->to(base_url('exam'))->with('error', 'Ujian tidak ditemukan!');
+        }
+
+        $quizModel = new MoodleQuizModel();
+        $ok = $quizModel->resetQuizAttempts($quizId);
+
+        if ($ok) {
+            return redirect()->to(base_url('dashboard/monitoring/' . $examId))
+                ->with('success', 'Seluruh data pengerjaan (attempt) siswa pada kuis Moodle berhasil dibersihkan. Siswa dapat memulai kuis baru.');
+        }
+
+        return redirect()->to(base_url('dashboard/monitoring/' . $examId))
+            ->with('error', 'Gagal mereset data pengerjaan kuis.');
+    }
 }
