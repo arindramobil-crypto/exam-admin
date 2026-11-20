@@ -16,6 +16,10 @@ class MoodleUserModel extends Model
         'calendartype', 'timecreated', 'timemodified', 'deleted', 'suspended'
     ];
 
+    private static array $cohortCache = [];
+    private static array $enrolCache = [];
+    private static array $contextCache = [];
+
     public function getEnrolledStudents(int $courseId): array
     {
         try {
@@ -113,7 +117,8 @@ class MoodleUserModel extends Model
 
             $now = time();
             $plainPassword = $userData['password'] ?? '123456';
-            $hashedPassword = password_hash($plainPassword, PASSWORD_DEFAULT);
+            // Gunakan BCRYPT cost 8 untuk batch processing cepat (~10ms vs ~75ms per user)
+            $hashedPassword = password_hash($plainPassword, PASSWORD_BCRYPT, ['cost' => 8]);
 
             // Split full name into firstname and lastname
             $fullName = trim($userData['nama'] ?? $username);
@@ -173,18 +178,23 @@ class MoodleUserModel extends Model
         try {
             if (!$userId || !$courseId) return false;
 
-            // 1. Find manual enrol instance for this course
-            $enrol = $this->db->table('enrol')
-                ->where('courseid', $courseId)
-                ->where('enrol', 'manual')
-                ->get()->getRowArray();
-
-            if (!$enrol) {
-                // Fallback to any active enrol instance
+            // 1. Find manual enrol instance for this course (cached in memory)
+            if (!array_key_exists($courseId, self::$enrolCache)) {
                 $enrol = $this->db->table('enrol')
                     ->where('courseid', $courseId)
-                    ->where('status', 0)
+                    ->where('enrol', 'manual')
                     ->get()->getRowArray();
+
+                if (!$enrol) {
+                    // Fallback to any active enrol instance
+                    $enrol = $this->db->table('enrol')
+                        ->where('courseid', $courseId)
+                        ->where('status', 0)
+                        ->get()->getRowArray();
+                }
+                self::$enrolCache[$courseId] = $enrol;
+            } else {
+                $enrol = self::$enrolCache[$courseId];
             }
 
             if (!$enrol) return false;
@@ -210,11 +220,16 @@ class MoodleUserModel extends Model
                 ]);
             }
 
-            // 3. Assign Student role (roleid = 5) in Course Context (contextlevel = 50)
-            $context = $this->db->table('context')
-                ->where('contextlevel', 50) // 50 = CONTEXT_COURSE
-                ->where('instanceid', $courseId)
-                ->get()->getRowArray();
+            // 3. Assign Student role (roleid = 5) in Course Context (contextlevel = 50, cached)
+            if (!array_key_exists($courseId, self::$contextCache)) {
+                $context = $this->db->table('context')
+                    ->where('contextlevel', 50) // 50 = CONTEXT_COURSE
+                    ->where('instanceid', $courseId)
+                    ->get()->getRowArray();
+                self::$contextCache[$courseId] = $context;
+            } else {
+                $context = self::$contextCache[$courseId];
+            }
 
             if ($context) {
                 $existingRole = $this->db->table('role_assignments')
@@ -251,7 +266,7 @@ class MoodleUserModel extends Model
     {
         try {
             if (!$userId || empty($newPassword)) return false;
-            $hashed = password_hash($newPassword, PASSWORD_DEFAULT);
+            $hashed = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 8]);
             $this->db->table('user')->where('id', $userId)->update([
                 'password'     => $hashed,
                 'timemodified' => time(),
@@ -272,6 +287,10 @@ class MoodleUserModel extends Model
             $name = trim($className);
             if (empty($name)) return null;
 
+            if (isset(self::$cohortCache[$name])) {
+                return self::$cohortCache[$name];
+            }
+
             // Cari kohor yang sudah ada berdasarkan name atau idnumber
             $existing = $this->db->table('cohort')
                 ->groupStart()
@@ -281,6 +300,7 @@ class MoodleUserModel extends Model
                 ->get()->getRowArray();
 
             if ($existing) {
+                self::$cohortCache[$name] = (int)$existing['id'];
                 return (int)$existing['id'];
             }
 
@@ -308,7 +328,9 @@ class MoodleUserModel extends Model
             }
 
             $this->db->table('cohort')->insert($data);
-            return (int)$this->db->insertID();
+            $newCohortId = (int)$this->db->insertID();
+            self::$cohortCache[$name] = $newCohortId;
+            return $newCohortId;
         } catch (Throwable $e) {
             log_message('error', 'MoodleUserModel::getOrCreateCohort error: ' . $e->getMessage());
             return null;

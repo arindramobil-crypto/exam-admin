@@ -35,6 +35,10 @@ class Participant extends BaseController
 
     public function importFromMoodle(int $examId)
     {
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+        @ini_set('memory_limit', '512M');
+
         $subjectId = $this->request->getPost('subject_id');
         $subject   = (new ExamSubjectModel())->find($subjectId);
 
@@ -69,6 +73,14 @@ class Participant extends BaseController
 
         $kelasStr = $this->request->getPost('kelas') ?: ($subject['kelas'] ?: '10');
 
+        $existingParticipants = $pModel->where('exam_id', $examId)->findAll();
+        $existingByNomor = [];
+        foreach ($existingParticipants as $ep) {
+            if (!empty($ep['nomor_peserta'])) {
+                $existingByNomor[trim((string)$ep['nomor_peserta'])] = true;
+            }
+        }
+
         foreach ($moodleUsers as $u) {
             $exists = $pModel->where('exam_id', $examId)
                 ->where('subject_id', $subjectId)
@@ -80,7 +92,12 @@ class Participant extends BaseController
                 continue;
             }
 
-            $nomor = $pModel->generateNomorPeserta($examId, $kelasStr, $urut);
+            do {
+                $nomor = $pModel->generateNomorPeserta($examId, $kelasStr, $urut);
+                $urut++;
+            } while (isset($existingByNomor[$nomor]));
+            $existingByNomor[$nomor] = true;
+
             $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
             $pwd = substr(str_shuffle($chars), 0, 6);
 
@@ -95,7 +112,6 @@ class Participant extends BaseController
                 'kelas'          => $kelasStr,
                 'sesi'           => 1,
             ]);
-            $urut++;
             $inserted++;
         }
 
@@ -249,6 +265,11 @@ class Participant extends BaseController
 
     public function importExcel(int $examId)
     {
+        // Hilangkan batasan waktu eksekusi & naikkan alokasi memori untuk batch besar (1.000+ siswa)
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+        @ini_set('memory_limit', '512M');
+
         $file = $this->request->getFile('file_excel');
         if (!$file || !$file->isValid()) {
             return redirect()->back()->with('error', 'File Excel tidak valid atau belum dipilih!');
@@ -335,9 +356,23 @@ class Participant extends BaseController
                 }
             }
 
-            $existing = $pModel->where('exam_id', $examId)->countAllResults();
-            $urut = $existing + 1;
+            // Preload data peserta yang sudah ada di paket ujian ini untuk cegah duplikasi & collision nomor_peserta
+            $existingParticipants = $pModel->where('exam_id', $examId)->findAll();
+            $existingByNis = [];
+            $existingByNomor = [];
+            foreach ($existingParticipants as $ep) {
+                if (!empty($ep['nis'])) {
+                    $existingByNis[trim((string)$ep['nis'])] = $ep;
+                }
+                if (!empty($ep['nomor_peserta'])) {
+                    $existingByNomor[trim((string)$ep['nomor_peserta'])] = $ep;
+                }
+            }
+
+            $urut = count($existingParticipants) + 1;
             $inserted = 0;
+            $updated = 0;
+            $skipped = 0;
             $moodleCreated = 0;
             $moodleEnrolled = 0;
             $cohortsSynced = 0;
@@ -350,105 +385,147 @@ class Participant extends BaseController
                 $nama = trim((string)($row[$colMap['nama']] ?? ''));
                 if (empty($nama)) continue;
 
-                $noPesertaRaw = trim((string)($row[$colMap['no_peserta']] ?? ''));
-                $nis          = trim((string)($row[$colMap['nis']] ?? ''));
-                $nisn         = trim((string)($row[$colMap['nisn']] ?? ''));
-                $kelas        = trim((string)($row[$colMap['kelas']] ?? '10'));
-                $ruangRaw     = trim((string)($row[$colMap['ruang']] ?? ''));
-                $mejaRaw      = trim((string)($row[$colMap['meja']] ?? ''));
-                $sesiRaw      = trim((string)($row[$colMap['sesi']] ?? ''));
-                $pwdRaw       = trim((string)($row[$colMap['password']] ?? ''));
+                try {
+                    $noPesertaRaw = trim((string)($row[$colMap['no_peserta']] ?? ''));
+                    $nis          = trim((string)($row[$colMap['nis']] ?? ''));
+                    $nisn         = trim((string)($row[$colMap['nisn']] ?? ''));
+                    $kelas        = trim((string)($row[$colMap['kelas']] ?? '10'));
+                    $ruangRaw     = trim((string)($row[$colMap['ruang']] ?? ''));
+                    $mejaRaw      = trim((string)($row[$colMap['meja']] ?? ''));
+                    $sesiRaw      = trim((string)($row[$colMap['sesi']] ?? ''));
+                    $pwdRaw       = trim((string)($row[$colMap['password']] ?? ''));
 
-                // Tentukan Nomor Peserta
-                $nomor = (!empty($noPesertaRaw) && str_contains($noPesertaRaw, '-')) 
-                    ? $noPesertaRaw 
-                    : $pModel->generateNomorPeserta($examId, $kelas, $urut);
+                    // Deteksi apakah siswa ini sudah pernah ada berdasarkan NIS
+                    $existingRecord = (!empty($nis) && isset($existingByNis[$nis])) ? $existingByNis[$nis] : null;
 
-                // Tentukan Password CBT
-                $pwd = !empty($pwdRaw) ? $pwdRaw : substr(str_shuffle($chars), 0, 6);
-
-                // Tentukan Sesi
-                $sesiClean = preg_replace('/[^0-9]/', '', $sesiRaw);
-                $sesi = !empty($sesiClean) ? (int)$sesiClean : 1;
-
-                // Tentukan Nomor Meja
-                $mejaClean = preg_replace('/[^0-9]/', '', $mejaRaw);
-                $nomorMeja = !empty($mejaClean) ? (int)$mejaClean : null;
-
-                // Tentukan Ruangan
-                $roomId = null;
-                if (!empty($ruangRaw)) {
-                    $ruangKey = strtolower($ruangRaw);
-                    if (isset($roomMap[$ruangKey])) {
-                        $roomId = $roomMap[$ruangKey];
+                    // Tentukan Nomor Peserta (pastikan unik dan tidak menabrak peserta lain)
+                    if (!empty($noPesertaRaw) && str_contains($noPesertaRaw, '-')) {
+                        $nomor = $noPesertaRaw;
+                    } elseif ($existingRecord && !empty($existingRecord['nomor_peserta'])) {
+                        $nomor = $existingRecord['nomor_peserta'];
                     } else {
-                        // Jika ruangan belum terdaftar, buat otomatis di tabel rooms
-                        $newRoomId = $roomModel->insert([
-                            'nama_ruang' => $ruangRaw,
-                            'kapasitas'  => 36,
-                            'keterangan' => 'Dibuat otomatis dari Import Excel',
+                        do {
+                            $nomor = $pModel->generateNomorPeserta($examId, $kelas, $urut);
+                            $urut++;
+                        } while (isset($existingByNomor[$nomor]));
+                    }
+
+                    // Tentukan Password CBT
+                    if (!empty($pwdRaw)) {
+                        $pwd = $pwdRaw;
+                    } elseif ($existingRecord && !empty($existingRecord['password'])) {
+                        $pwd = $existingRecord['password'];
+                    } else {
+                        $pwd = substr(str_shuffle($chars), 0, 6);
+                    }
+
+                    // Tentukan Sesi
+                    $sesiClean = preg_replace('/[^0-9]/', '', $sesiRaw);
+                    $sesi = !empty($sesiClean) ? (int)$sesiClean : ($existingRecord['sesi'] ?? 1);
+
+                    // Tentukan Nomor Meja
+                    $mejaClean = preg_replace('/[^0-9]/', '', $mejaRaw);
+                    $nomorMeja = !empty($mejaClean) ? (int)$mejaClean : ($existingRecord['nomor_meja'] ?? null);
+
+                    // Tentukan Ruangan
+                    $roomId = $existingRecord['room_id'] ?? null;
+                    if (!empty($ruangRaw)) {
+                        $ruangKey = strtolower($ruangRaw);
+                        if (isset($roomMap[$ruangKey])) {
+                            $roomId = $roomMap[$ruangKey];
+                        } else {
+                            // Jika ruangan belum terdaftar, buat otomatis di tabel rooms
+                            $newRoomId = $roomModel->insert([
+                                'nama_ruang' => $ruangRaw,
+                                'kapasitas'  => 36,
+                                'keterangan' => 'Dibuat otomatis dari Import Excel',
+                            ]);
+                            if ($newRoomId) {
+                                $roomId = (int)$newRoomId;
+                                $roomMap[$ruangKey] = $roomId;
+                            }
+                        }
+                    }
+
+                    $moodleUserId = $existingRecord['moodle_user_id'] ?? null;
+
+                    // Sync to Moodle & Kohor Otomatis
+                    if ($syncMoodle) {
+                        $username = strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $nis ?: $nomor));
+                        $moodleId = $moodleUserModel->createOrUpdateStudent([
+                            'username' => $username,
+                            'password' => $pwd,
+                            'nama'     => $nama,
+                            'nis'      => $nis ?: $username,
+                            'kelas'    => $kelas,
                         ]);
-                        if ($newRoomId) {
-                            $roomId = (int)$newRoomId;
-                            $roomMap[$ruangKey] = $roomId;
-                        }
-                    }
-                }
 
-                $moodleUserId = null;
+                        if ($moodleId) {
+                            $moodleUserId = $moodleId;
+                            $moodleCreated++;
 
-                // Sync to Moodle & Kohor Otomatis
-                if ($syncMoodle) {
-                    $username = strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $nis ?: $nomor));
-                    $moodleId = $moodleUserModel->createOrUpdateStudent([
-                        'username' => $username,
-                        'password' => $pwd,
-                        'nama'     => $nama,
-                        'nis'      => $nis ?: $username,
-                        'kelas'    => $kelas,
-                    ]);
-
-                    if ($moodleId) {
-                        $moodleUserId = $moodleId;
-                        $moodleCreated++;
-
-                        // Buat kohor otomatis dari nama kelas dan masukkan siswa
-                        if (!empty($kelas)) {
-                            $cohortId = $moodleUserModel->syncStudentToClassCohort($moodleId, $kelas);
-                            if ($cohortId) {
-                                $cohortsSynced++;
+                            // Buat kohor otomatis dari nama kelas dan masukkan siswa
+                            if (!empty($kelas)) {
+                                $cohortId = $moodleUserModel->syncStudentToClassCohort($moodleId, $kelas);
+                                if ($cohortId) {
+                                    $cohortsSynced++;
+                                }
                             }
-                        }
 
-                        // Enrol to course if courseId is found
-                        if ($courseId) {
-                            if ($moodleUserModel->enrolStudentToCourse($moodleId, (int)$courseId)) {
-                                $moodleEnrolled++;
+                            // Enrol to course if courseId is found
+                            if ($courseId) {
+                                if ($moodleUserModel->enrolStudentToCourse($moodleId, (int)$courseId)) {
+                                    $moodleEnrolled++;
+                                }
                             }
                         }
                     }
+
+                    $saveData = [
+                        'exam_id'        => $examId,
+                        'subject_id'     => $subjectId ?: null,
+                        'room_id'        => $roomId,
+                        'nomor_meja'     => $nomorMeja,
+                        'sesi'           => $sesi,
+                        'moodle_user_id' => $moodleUserId,
+                        'nomor_peserta'  => $nomor,
+                        'nama'           => $nama,
+                        'nis'            => $nis,
+                        'nisn'           => $nisn,
+                        'kelas'          => $kelas,
+                        'password'       => $pwd,
+                    ];
+
+                    if ($existingRecord) {
+                        $pModel->update($existingRecord['id'], $saveData);
+                        $saveData['id'] = $existingRecord['id'];
+                        $updated++;
+                    } else {
+                        $newId = $pModel->insert($saveData);
+                        $saveData['id'] = $newId;
+                        $inserted++;
+                    }
+
+                    // Daftarkan ke in-memory cache
+                    if (!empty($nis)) {
+                        $existingByNis[$nis] = $saveData;
+                    }
+                    $existingByNomor[$nomor] = $saveData;
+
+                } catch (\Throwable $rowErr) {
+                    log_message('error', "Import row $i failed: " . $rowErr->getMessage());
+                    $skipped++;
                 }
-
-                $pModel->insert([
-                    'exam_id'        => $examId,
-                    'subject_id'     => $subjectId ?: null,
-                    'room_id'        => $roomId,
-                    'nomor_meja'     => $nomorMeja,
-                    'sesi'           => $sesi,
-                    'moodle_user_id' => $moodleUserId,
-                    'nomor_peserta'  => $nomor,
-                    'nama'           => $nama,
-                    'nis'            => $nis,
-                    'nisn'           => $nisn,
-                    'kelas'          => $kelas,
-                    'password'       => $pwd,
-                ]);
-
-                $urut++;
-                $inserted++;
             }
 
-            $msg = "$inserted peserta berhasil diimpor dari Excel.";
+            $msg = "$inserted peserta baru berhasil ditambahkan";
+            if ($updated > 0) {
+                $msg .= ", $updated peserta diperbarui";
+            }
+            $msg .= " dari Excel.";
+            if ($skipped > 0) {
+                $msg .= " ($skipped baris dilewati karena format tidak sesuai)";
+            }
             if ($syncMoodle) {
                 $msg .= " ($moodleCreated akun siswa & kohor kelas disinkronkan di Moodle";
                 if ($courseId) {
@@ -469,6 +546,11 @@ class Participant extends BaseController
      */
     public function syncToMoodle(int $examId)
     {
+        // Hilangkan batas waktu eksekusi untuk batch besar
+        @set_time_limit(0);
+        @ini_set('max_execution_time', '0');
+        @ini_set('memory_limit', '512M');
+
         $pModel = new ParticipantModel();
         $participants = $pModel->where('exam_id', $examId)->findAll();
 
@@ -496,33 +578,37 @@ class Participant extends BaseController
         $cohortsSynced = 0;
 
         foreach ($participants as $p) {
-            $username = strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $p['nis'] ?: $p['nomor_peserta']));
-            $pwd = $p['password'] ?: '123456';
+            try {
+                $username = strtolower(preg_replace('/[^a-zA-Z0-9._-]/', '', $p['nis'] ?: $p['nomor_peserta']));
+                $pwd = $p['password'] ?: '123456';
 
-            $moodleId = $moodleUserModel->createOrUpdateStudent([
-                'username' => $username,
-                'password' => $pwd,
-                'nama'     => $p['nama'],
-                'nis'      => $p['nis'] ?: $username,
-                'kelas'    => $p['kelas'] ?? '',
-            ]);
+                $moodleId = $moodleUserModel->createOrUpdateStudent([
+                    'username' => $username,
+                    'password' => $pwd,
+                    'nama'     => $p['nama'],
+                    'nis'      => $p['nis'] ?: $username,
+                    'kelas'    => $p['kelas'] ?? '',
+                ]);
 
-            if ($moodleId) {
-                $pModel->update($p['id'], ['moodle_user_id' => $moodleId]);
-                $synced++;
+                if ($moodleId) {
+                    $pModel->update($p['id'], ['moodle_user_id' => $moodleId]);
+                    $synced++;
 
-                // Sinkronkan ke kohor kelas di Moodle secara otomatis
-                if (!empty($p['kelas'])) {
-                    if ($moodleUserModel->syncStudentToClassCohort($moodleId, $p['kelas'])) {
-                        $cohortsSynced++;
+                    // Sinkronkan ke kohor kelas di Moodle secara otomatis
+                    if (!empty($p['kelas'])) {
+                        if ($moodleUserModel->syncStudentToClassCohort($moodleId, $p['kelas'])) {
+                            $cohortsSynced++;
+                        }
+                    }
+
+                    foreach ($courseIds as $cId) {
+                        if ($moodleUserModel->enrolStudentToCourse($moodleId, $cId)) {
+                            $enrolled++;
+                        }
                     }
                 }
-
-                foreach ($courseIds as $cId) {
-                    if ($moodleUserModel->enrolStudentToCourse($moodleId, $cId)) {
-                        $enrolled++;
-                    }
-                }
+            } catch (\Throwable $rowErr) {
+                log_message('error', 'Participant::syncToMoodle row error: ' . $rowErr->getMessage());
             }
         }
 
