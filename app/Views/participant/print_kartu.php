@@ -129,13 +129,10 @@ body {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
 }
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-}
 
 .kartu-item {
     background: #fff;
-    border: 1.5px solid #1e293b;
+    border: 1.5px solid #0f172a;
     border-radius: 8px;
     padding: 12px 14px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.04);
@@ -250,30 +247,48 @@ body {
 
 .kartu-footer {
     border-top: 1px dashed #cbd5e1;
-    margin-top: 8px;
-    padding-top: 6px;
+    margin-top: 10px;
+    padding-top: 8px;
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     font-size: 9.5px;
     color: #64748b;
 }
+.kartu-footer-note {
+    font-size: 8.5px;
+    color: #94a3b8;
+    line-height: 1.4;
+    font-style: italic;
+}
 .signature-box {
     text-align: center;
-    width: 150px;
-    line-height: 1.25;
+    min-width: 180px;
+    max-width: 230px;
+    line-height: 1.3;
+    flex-shrink: 0;
+}
+.signature-title {
+    font-size: 9.5px;
+    color: #334155;
+    font-weight: 500;
+    white-space: nowrap;
 }
 .signature-space {
-    height: 28px;
+    height: 32px;
 }
 .signature-name {
+    font-size: 9.5px;
     font-weight: 700;
     color: #0f172a;
     text-decoration: underline;
+    white-space: nowrap;
 }
 .signature-nip {
     font-size: 8.5px;
     color: #475569;
+    white-space: nowrap;
+    margin-top: 1px;
 }
 
 /* Print Stylesheet */
@@ -521,9 +536,11 @@ if (!empty($rooms)) {
                         </div>
 
                         <div class="kartu-footer">
-                            <span>* Harap dibawa saat ujian</span>
+                            <div class="kartu-footer-note">
+                                * Harap dibawa saat ujian
+                            </div>
                             <div class="signature-box">
-                                <div><?= !empty($kota) ? esc($kota) . ', ' : '' ?><?= esc($jabatanTtd) ?></div>
+                                <div class="signature-title"><?= !empty($kota) ? esc($kota) . ', ' : '' ?><?= esc($jabatanTtd) ?></div>
                                 <div class="signature-space"></div>
                                 <div class="signature-name"><?= esc($namaPejabat) ?></div>
                                 <?php if(!empty($nipPejabat)): ?>
