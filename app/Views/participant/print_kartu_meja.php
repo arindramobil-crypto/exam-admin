@@ -275,13 +275,6 @@ $logoUrl = (!empty($settings['logo']) && file_exists(FCPATH . $settings['logo'])
                         <span class="info-separator">:</span>
                         <span class="info-value"><?= esc($roomName) ?> / Sesi <?= $p['sesi'] ?: 1 ?></span>
                     </div>
-                    <?php if(!empty($p['password'])): ?>
-                    <div class="info-row" style="margin-top:3px">
-                        <span class="info-label">Password CBT</span>
-                        <span class="info-separator">:</span>
-                        <span class="info-value"><span class="password-box"><?= esc($p['password']) ?></span></span>
-                    </div>
-                    <?php endif; ?>
                 </div>
 
                 <div class="meja-footer">
