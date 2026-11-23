@@ -200,11 +200,67 @@ class Participant extends BaseController
         if (!$exam) {
             return redirect()->to(base_url('exam'))->with('error', 'Ujian tidak ditemukan!');
         }
-        $rooms = (new RoomModel())->findAll();
-        $participants = (new ParticipantModel())->where('exam_id', $examId)->orderBy('nomor_peserta', 'ASC')->findAll();
+
+        $pModel   = new ParticipantModel();
+        $rooms    = (new RoomModel())->findAll();
         $settings = (new SettingModel())->getAllKeyValue();
 
-        return view('participant/print_kartu', compact('exam', 'participants', 'rooms', 'settings'));
+        // Ambil daftar kelas unik untuk dropdown filter
+        $kelasRows = $pModel->builder()
+            ->select('kelas')
+            ->distinct()
+            ->where('exam_id', $examId)
+            ->where('kelas IS NOT NULL')
+            ->where('kelas !=', '')
+            ->orderBy('kelas', 'ASC')
+            ->get()->getResultArray();
+        $allKelas = array_values(array_filter(array_column($kelasRows, 'kelas')));
+
+        $filterKelas = trim((string)$this->request->getGet('kelas'));
+        $filterRoom  = $this->request->getGet('room_id');
+        $filterSesi  = $this->request->getGet('sesi');
+        $sortBy      = $this->request->getGet('sort') ?: 'kelas_nama';
+        $pageBreak   = $this->request->getGet('break') == '1';
+
+        $q = $pModel->where('exam_id', $examId);
+        if (!empty($filterKelas)) {
+            $q->where('kelas', $filterKelas);
+        }
+        if (!empty($filterRoom)) {
+            $q->where('room_id', (int)$filterRoom);
+        }
+        if (!empty($filterSesi)) {
+            $q->where('sesi', (int)$filterSesi);
+        }
+
+        switch ($sortBy) {
+            case 'kelas_nama':
+                $q->orderBy('kelas', 'ASC')->orderBy('nama', 'ASC');
+                break;
+            case 'kelas_meja':
+                $q->orderBy('kelas', 'ASC')->orderBy('nomor_meja', 'ASC');
+                break;
+            case 'kelas_nomor':
+                $q->orderBy('kelas', 'ASC')->orderBy('nomor_peserta', 'ASC');
+                break;
+            case 'room_meja':
+                $q->orderBy('room_id', 'ASC')->orderBy('nomor_meja', 'ASC')->orderBy('sesi', 'ASC');
+                break;
+            case 'nama':
+                $q->orderBy('nama', 'ASC');
+                break;
+            case 'nomor_peserta':
+            default:
+                $q->orderBy('nomor_peserta', 'ASC');
+                break;
+        }
+
+        $participants = $q->findAll();
+
+        return view('participant/print_kartu', compact(
+            'exam', 'participants', 'rooms', 'settings', 'allKelas',
+            'filterKelas', 'filterRoom', 'filterSesi', 'sortBy', 'pageBreak'
+        ));
     }
 
     public function printKartuMeja(int $examId)
@@ -213,11 +269,69 @@ class Participant extends BaseController
         if (!$exam) {
             return redirect()->to(base_url('exam'))->with('error', 'Ujian tidak ditemukan!');
         }
-        $rooms = (new RoomModel())->findAll();
-        $participants = (new ParticipantModel())->where('exam_id', $examId)->orderBy('room_id', 'ASC')->orderBy('nomor_meja', 'ASC')->findAll();
+
+        $pModel   = new ParticipantModel();
+        $rooms    = (new RoomModel())->findAll();
         $settings = (new SettingModel())->getAllKeyValue();
 
-        return view('participant/print_kartu_meja', compact('exam', 'participants', 'rooms', 'settings'));
+        // Ambil daftar kelas unik untuk dropdown filter
+        $kelasRows = $pModel->builder()
+            ->select('kelas')
+            ->distinct()
+            ->where('exam_id', $examId)
+            ->where('kelas IS NOT NULL')
+            ->where('kelas !=', '')
+            ->orderBy('kelas', 'ASC')
+            ->get()->getResultArray();
+        $allKelas = array_values(array_filter(array_column($kelasRows, 'kelas')));
+
+        $filterKelas = trim((string)$this->request->getGet('kelas'));
+        $filterRoom  = $this->request->getGet('room_id');
+        $filterSesi  = $this->request->getGet('sesi');
+        $sortBy      = $this->request->getGet('sort') ?: 'kelas_meja';
+        $pageBreak   = $this->request->getGet('break') == '1';
+
+        $q = $pModel->where('exam_id', $examId);
+        if (!empty($filterKelas)) {
+            $q->where('kelas', $filterKelas);
+        }
+        if (!empty($filterRoom)) {
+            $q->where('room_id', (int)$filterRoom);
+        }
+        if (!empty($filterSesi)) {
+            $q->where('sesi', (int)$filterSesi);
+        }
+
+        switch ($sortBy) {
+            case 'kelas_meja':
+                $q->orderBy('kelas', 'ASC')->orderBy('nomor_meja', 'ASC')->orderBy('sesi', 'ASC');
+                break;
+            case 'kelas_nama':
+                $q->orderBy('kelas', 'ASC')->orderBy('nama', 'ASC');
+                break;
+            case 'kelas_nomor':
+                $q->orderBy('kelas', 'ASC')->orderBy('nomor_peserta', 'ASC');
+                break;
+            case 'room_meja':
+                $q->orderBy('room_id', 'ASC')->orderBy('nomor_meja', 'ASC')->orderBy('sesi', 'ASC');
+                break;
+            case 'nomor_peserta':
+                $q->orderBy('nomor_peserta', 'ASC');
+                break;
+            case 'nama':
+                $q->orderBy('nama', 'ASC');
+                break;
+            default:
+                $q->orderBy('kelas', 'ASC')->orderBy('nomor_meja', 'ASC');
+                break;
+        }
+
+        $participants = $q->findAll();
+
+        return view('participant/print_kartu_meja', compact(
+            'exam', 'participants', 'rooms', 'settings', 'allKelas',
+            'filterKelas', 'filterRoom', 'filterSesi', 'sortBy', 'pageBreak'
+        ));
     }
 
     public function exportExcel(int $examId)
