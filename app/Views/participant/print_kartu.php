@@ -375,7 +375,9 @@ if (!empty($rooms)) {
                 <?= !empty($filterKelas) ? ' &bull; Kelas: <span style="color:#a5b4fc;font-weight:700">' . esc($filterKelas) . '</span>' : '' ?>
                 <?= (!empty($filterRoom) && isset($roomsMap[$filterRoom])) ? ' &bull; Ruang: <span style="color:#38bdf8;font-weight:700">' . esc($roomsMap[$filterRoom]) . '</span>' : '' ?>
                 <?= !empty($filterSesi) ? ' &bull; Sesi <span style="color:#f472b6;font-weight:700">' . esc($filterSesi) . '</span>' : '' ?>
-                &bull; TTD: <?= esc($jabatanTtd) ?> (<?= esc($namaPejabat) ?>)
+                <span id="ttdInfoText">
+                    <?= !empty($showTtd) ? ('&bull; TTD: ' . esc($jabatanTtd)) : '&bull; <span style="color:#94a3b8">(Tanda Tangan Dinonaktifkan)</span>' ?>
+                </span>
             </p>
         </div>
         <div class="toolbar-actions">
@@ -441,7 +443,12 @@ if (!empty($rooms)) {
             <span>Pisahkan Halaman per Kelas</span>
         </label>
 
-        <?php if (!empty($filterKelas) || !empty($filterRoom) || !empty($filterSesi) || $sortBy !== 'kelas_nama' || $pageBreak): ?>
+        <label class="filter-check" title="Centang untuk menampilkan tanda tangan pejabat pada kartu">
+            <input type="checkbox" name="ttd" id="toggleTtd" value="1" <?= !empty($showTtd) ? 'checked' : '' ?> onchange="toggleSignature(this.checked)">
+            <span>Tampilkan Tanda Tangan</span>
+        </label>
+
+        <?php if (!empty($filterKelas) || !empty($filterRoom) || !empty($filterSesi) || $sortBy !== 'kelas_nama' || $pageBreak || !empty($showTtd)): ?>
             <a href="<?= base_url('participant/print-kartu/' . $exam['id']) ?>" class="btn btn-outline" style="padding:4px 10px;font-size:11px;color:#f87171;border-color:rgba(239,68,68,0.4);margin-left:auto">
                 <i class="fas fa-undo"></i> Reset Filter
             </a>
@@ -555,7 +562,7 @@ if (!empty($rooms)) {
                             <div class="kartu-footer-note">
                                 * Harap dibawa saat ujian
                             </div>
-                            <div class="signature-box">
+                            <div class="signature-box" style="<?= empty($showTtd) ? 'display:none;' : '' ?>">
                                 <div class="signature-date"><?= $kotaTanggal ?></div>
                                 <div class="signature-title"><?= esc($jabatanTtd) ?></div>
                                 <div class="signature-space"></div>
@@ -572,6 +579,20 @@ if (!empty($rooms)) {
         <?php endforeach; ?>
     <?php endif; ?>
 </div>
+
+<script>
+function toggleSignature(show) {
+    document.querySelectorAll('.signature-box').forEach(el => {
+        el.style.display = show ? 'block' : 'none';
+    });
+    const info = document.getElementById('ttdInfoText');
+    if (info) {
+        info.innerHTML = show 
+            ? '&bull; TTD: <?= esc($jabatanTtd) ?>' 
+            : '&bull; <span style="color:#94a3b8">(Tanda Tangan Dinonaktifkan)</span>';
+    }
+}
+</script>
 
 </body>
 </html>

@@ -221,6 +221,7 @@ class Participant extends BaseController
         $filterSesi  = $this->request->getGet('sesi');
         $sortBy      = $this->request->getGet('sort') ?: 'kelas_nama';
         $pageBreak   = $this->request->getGet('break') == '1';
+        $showTtd     = $this->request->getGet('ttd') == '1'; // Default: false (tanda tangan dinonaktifkan/disabled)
 
         $q = $pModel->where('exam_id', $examId);
         if (!empty($filterKelas)) {
@@ -259,7 +260,7 @@ class Participant extends BaseController
 
         return view('participant/print_kartu', compact(
             'exam', 'participants', 'rooms', 'settings', 'allKelas',
-            'filterKelas', 'filterRoom', 'filterSesi', 'sortBy', 'pageBreak'
+            'filterKelas', 'filterRoom', 'filterSesi', 'sortBy', 'pageBreak', 'showTtd'
         ));
     }
 
