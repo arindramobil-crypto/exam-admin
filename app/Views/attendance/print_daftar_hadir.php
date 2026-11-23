@@ -265,7 +265,7 @@ $subjectName = $subject ? $subject['nama_mapel'] . " (Kelas " . $subject['kelas'
             <div class="meta-row" style="margin-top:4px">
                 <span class="meta-label">Mata Pelajaran</span>
                 <span style="margin-right:8px">:</span>
-                <span class="meta-val"><?= esc($subjectName) ?></span>
+                <span class="meta-val">............................................................</span>
             </div>
             <div class="meta-row" style="margin-top:4px">
                 <span class="meta-label">Tahun Pelajaran</span>
@@ -287,7 +287,7 @@ $subjectName = $subject ? $subject['nama_mapel'] . " (Kelas " . $subject['kelas'
             <div class="meta-row" style="margin-top:4px">
                 <span class="meta-label">Hari / Tanggal</span>
                 <span style="margin-right:8px">:</span>
-                <span class="meta-val"><?= date('d F Y') ?></span>
+                <span class="meta-val">............................................................</span>
             </div>
         </div>
     </div>
@@ -343,7 +343,7 @@ $subjectName = $subject ? $subject['nama_mapel'] . " (Kelas " . $subject['kelas'
             <?php endif; ?>
         </div>
         <div class="ttd-box">
-            <div><?= esc($kota) ?>, <?= date('d F Y') ?></div>
+            <div><?= esc($kota) ?>, ................................... <?= esc($exam['tahun'] ?? date('Y')) ?></div>
             <div>Pengawas Ruang,</div>
             <div class="ttd-space"></div>
             <div class="ttd-name">( ........................................... )</div>
