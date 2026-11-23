@@ -263,19 +263,25 @@ body {
 }
 .signature-box {
     text-align: center;
-    min-width: 180px;
-    max-width: 230px;
-    line-height: 1.3;
+    min-width: 190px;
+    max-width: 240px;
+    line-height: 1.25;
     flex-shrink: 0;
+}
+.signature-date {
+    font-size: 9.5px;
+    color: #0f172a;
+    white-space: nowrap;
 }
 .signature-title {
     font-size: 9.5px;
-    color: #334155;
-    font-weight: 500;
+    color: #0f172a;
+    font-weight: 600;
     white-space: nowrap;
+    margin-top: 1px;
 }
 .signature-space {
-    height: 32px;
+    height: 30px;
 }
 .signature-name {
     font-size: 9.5px;
@@ -336,11 +342,21 @@ body {
 <?php
 $namaSekolah = $settings['nama_sekolah'] ?? 'SEKOLAH / MADRASAH';
 $logoUrl = (!empty($settings['logo']) && file_exists(FCPATH . $settings['logo'])) ? base_url($settings['logo']) : '';
-$kota = $settings['kota'] ?? '';
+$kota = !empty($settings['kota']) ? $settings['kota'] : 'Mojokerto';
 $isKepsek = ($settings['ttd_kartu_jabatan'] ?? '') === 'Kepala Sekolah';
 $jabatanTtd = $isKepsek ? 'Kepala Sekolah' : 'Ketua Panitia Ujian';
 $namaPejabat = $isKepsek ? ($settings['nama_kepala_sekolah'] ?? '...................................') : ($settings['nama_ketua_panitia'] ?? '...................................');
 $nipPejabat = $isKepsek ? ($settings['nip_kepala_sekolah'] ?? '') : ($settings['nip_ketua_panitia'] ?? '');
+
+// Format tanggal tanda tangan: "Mojokerto,    Nopember 2026"
+$bulanIndo = [
+    1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+    5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+    9 => 'September', 10 => 'Oktober', 11 => 'Nopember', 12 => 'Desember'
+];
+$bulanTtd = $bulanIndo[(int)date('n')] ?? 'Nopember';
+$tahunTtd = !empty($exam['tahun']) ? $exam['tahun'] : date('Y');
+$kotaTanggal = esc($kota) . ', &nbsp;&nbsp;&nbsp;&nbsp;' . $bulanTtd . ' ' . $tahunTtd;
 
 $roomsMap = [];
 if (!empty($rooms)) {
@@ -540,7 +556,8 @@ if (!empty($rooms)) {
                                 * Harap dibawa saat ujian
                             </div>
                             <div class="signature-box">
-                                <div class="signature-title"><?= !empty($kota) ? esc($kota) . ', ' : '' ?><?= esc($jabatanTtd) ?></div>
+                                <div class="signature-date"><?= $kotaTanggal ?></div>
+                                <div class="signature-title"><?= esc($jabatanTtd) ?></div>
                                 <div class="signature-space"></div>
                                 <div class="signature-name"><?= esc($namaPejabat) ?></div>
                                 <?php if(!empty($nipPejabat)): ?>
