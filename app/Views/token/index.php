@@ -92,6 +92,68 @@
             </div>
         </div>
 
+        <!-- Ketentuan Waktu Minimal Pengerjaan Sebelum Selesai -->
+        <div class="card mb-4" style="margin-bottom:24px;border:1px solid <?= !empty($minFinishMinutes) ? 'rgba(245,158,11,0.5)' : 'var(--border)' ?>;background:<?= !empty($minFinishMinutes) ? 'rgba(245,158,11,0.04)' : 'transparent' ?>">
+            <div class="card-header" style="background:<?= !empty($minFinishMinutes) ? 'rgba(245,158,11,0.1)' : 'var(--surface2)' ?>;display:flex;align-items:center;justify-content:space-between">
+                <span class="card-title" style="color:<?= !empty($minFinishMinutes) ? '#f59e0b' : '#fff' ?>">
+                    <i class="fas fa-hourglass-start" style="margin-right:6px"></i> Batas Waktu Minimal Selesai Ujian
+                </span>
+                <button type="button" class="btn btn-sm btn-outline" onclick="toggleMinFinishEdit()" style="font-size:11px;padding:4px 8px">
+                    <i class="fas fa-edit"></i> Atur Waktu
+                </button>
+            </div>
+            <div class="card-body" style="padding:18px 20px">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+                    <div>
+                        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Waktu Pengerjaan Minimal:</div>
+                        <div style="font-size:28px;font-weight:900;letter-spacing:2px;color:<?= !empty($minFinishMinutes) ? '#f59e0b' : 'var(--muted)' ?>;margin-top:2px">
+                            <?php if(!empty($minFinishMinutes)): ?>
+                                <?= (int)$minFinishMinutes ?> <span style="font-size:16px;font-weight:600">Menit</span>
+                            <?php else: ?>
+                                Bebas <span style="font-size:14px;font-weight:500;color:var(--muted)">(Tanpa Batas)</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <div style="max-width:300px;font-size:12px;color:var(--muted);line-height:1.5">
+                        <i class="fas fa-info-circle" style="color:#f59e0b;margin-right:4px"></i>
+                        <?php if(!empty($minFinishMinutes)): ?>
+                            Siswa <strong>TIDAK BISA</strong> mengklik tombol "Kumpulkan semua dan selesai" sebelum pengerjaan mencapai minimal <strong><?= (int)$minFinishMinutes ?> menit</strong>. Tombol finish akan otomatis terkunci dengan hitung mundur.
+                        <?php else: ?>
+                            Saat ini dinonaktifkan. Siswa dapat menekan tombol selesai / submit kapan saja tanpa batasan waktu minimal.
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <!-- Form Atur Waktu Minimal (Hidden by default) -->
+                <div id="minFinishForm" style="display:none;margin-top:16px;padding-top:16px;border-top:1px dashed var(--border)">
+                    <form action="<?= base_url('token/save-min-finish-minutes/'.$exam['id']) ?>" method="POST">
+                        <?= csrf_field() ?>
+                        <div class="form-group" style="margin-bottom:12px">
+                            <label class="form-label" style="font-size:12px">Pilih / Tentukan Durasi Minimal Pengerjaan (Menit)</label>
+                            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+                                <button type="button" class="btn btn-sm btn-outline" onclick="setMinMinutes(0)">0 (Bebas)</button>
+                                <button type="button" class="btn btn-sm btn-outline" onclick="setMinMinutes(15)">15 Menit</button>
+                                <button type="button" class="btn btn-sm btn-outline" onclick="setMinMinutes(30)">30 Menit</button>
+                                <button type="button" class="btn btn-sm btn-outline" onclick="setMinMinutes(45)">45 Menit</button>
+                                <button type="button" class="btn btn-sm btn-outline" onclick="setMinMinutes(60)">60 Menit</button>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:8px">
+                                <input type="number" id="inputMinMinutes" name="min_finish_minutes" value="<?= (int)$minFinishMinutes ?>" min="0" max="300" class="form-control" style="font-weight:700;font-size:16px;width:120px" required>
+                                <span style="font-size:13px;color:var(--muted)">Menit pengerjaan sebelum tombol selesai aktif</span>
+                            </div>
+                            <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block">
+                                * Isi <strong>0</strong> jika siswa diizinkan menyelesaikan ujian kapan saja tanpa batas minimal.
+                            </small>
+                        </div>
+                        <div style="display:flex;gap:8px">
+                            <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-save"></i> Simpan Ketentuan</button>
+                            <button type="button" class="btn btn-sm btn-outline" onclick="toggleMinFinishEdit()">Batal</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
         <!-- Form Rilis Token Baru -->
         <div class="card">
             <div class="card-header">
@@ -194,6 +256,18 @@ function toggleProctorPinEdit() {
     var form = document.getElementById('proctorPinForm');
     if (form) {
         form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
+    }
+}
+function toggleMinFinishEdit() {
+    var form = document.getElementById('minFinishForm');
+    if (form) {
+        form.style.display = (form.style.display === 'none' || form.style.display === '') ? 'block' : 'none';
+    }
+}
+function setMinMinutes(val) {
+    var inp = document.getElementById('inputMinMinutes');
+    if (inp) {
+        inp.value = val;
     }
 }
 </script>

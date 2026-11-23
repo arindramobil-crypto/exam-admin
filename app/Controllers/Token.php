@@ -36,14 +36,16 @@ class Token extends BaseController
         $activeToken = $this->tokenModel->getActiveToken($examId);
         $recentTokens = $this->tokenModel->getTokenHistoryWithDetails($examId, 25);
         $proctorPin = $this->tokenModel->getProctorPin();
+        $minFinishMinutes = $this->tokenModel->getMinFinishMinutes();
 
         return view('token/index', [
-            'title'        => 'Rilis Token CBT',
-            'exam'         => $exam,
-            'subjects'     => $subjects,
-            'activeToken'  => $activeToken,
-            'recentTokens' => $recentTokens,
-            'proctorPin'   => $proctorPin,
+            'title'            => 'Rilis Token CBT',
+            'exam'             => $exam,
+            'subjects'         => $subjects,
+            'activeToken'      => $activeToken,
+            'recentTokens'     => $recentTokens,
+            'proctorPin'       => $proctorPin,
+            'minFinishMinutes' => $minFinishMinutes,
         ]);
     }
 
@@ -55,6 +57,22 @@ class Token extends BaseController
             return redirect()->back()->with('success', 'PIN Buka Kunci Pengawas berhasil diperbarui: ' . strtoupper(trim($newPin)));
         }
         return redirect()->back()->with('error', 'PIN tidak boleh kosong.');
+    }
+
+    public function saveMinFinishMinutes(int $examId)
+    {
+        $minutes = (int)$this->request->getPost('min_finish_minutes');
+        if ($minutes < 0) {
+            $minutes = 0;
+        }
+
+        $this->tokenModel->setMinFinishMinutes($minutes);
+
+        $msg = $minutes > 0
+            ? 'Ketentuan waktu minimal pengerjaan berhasil disimpan: ' . $minutes . ' menit. Siswa baru dapat menyelesaikan ujian setelah mengerjakan minimal ' . $minutes . ' menit.'
+            : 'Ketentuan waktu minimal pengerjaan dinonaktifkan (siswa dapat menyelesaikan ujian kapan saja).';
+
+        return redirect()->back()->with('success', $msg);
     }
 
     public function generate(int $examId)

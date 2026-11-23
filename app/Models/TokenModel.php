@@ -202,4 +202,47 @@ class TokenModel extends Model
 
         return true;
     }
+
+    /**
+     * Get Minimum Working Time in minutes before students can submit/finish
+     */
+    public function getMinFinishMinutes(): int
+    {
+        return (int)(new SettingModel())->getVal('cbt_min_finish_minutes', 0);
+    }
+
+    /**
+     * Save Minimum Working Time in minutes and sync to Moodle config
+     */
+    public function setMinFinishMinutes(int $minutes): bool
+    {
+        $minutes = max(0, $minutes);
+        (new SettingModel())->setVal('cbt_min_finish_minutes', (string)$minutes);
+
+        // Sync to Moodle mdl_config_plugins for local_cbt_kiosk
+        try {
+            $moodleDb = Database::connect('moodle', false);
+            if ($moodleDb) {
+                $existing = $moodleDb->table('config_plugins')
+                    ->where('plugin', 'local_cbt_kiosk')
+                    ->where('name', 'min_finish_minutes')
+                    ->get()->getRowArray();
+                if ($existing) {
+                    $moodleDb->table('config_plugins')
+                        ->where('id', $existing['id'])
+                        ->update(['value' => (string)$minutes]);
+                } else {
+                    $moodleDb->table('config_plugins')->insert([
+                        'plugin' => 'local_cbt_kiosk',
+                        'name'   => 'min_finish_minutes',
+                        'value'  => (string)$minutes,
+                    ]);
+                }
+            }
+        } catch (Throwable $e) {
+            log_message('error', 'TokenModel::setMinFinishMinutes sync to Moodle failed: ' . $e->getMessage());
+        }
+
+        return true;
+    }
 }

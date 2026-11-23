@@ -92,6 +92,7 @@ $routes->group('', ['filter' => 'auth'], function($routes) {
     $routes->get('token/(:num)', 'Token::index/$1');
     $routes->post('token/generate/(:num)', 'Token::generate/$1');
     $routes->post('token/save-proctor-pin/(:num)', 'Token::saveProctorPin/$1');
+    $routes->post('token/save-min-finish-minutes/(:num)', 'Token::saveMinFinishMinutes/$1');
     $routes->get('token/deactivate/(:num)', 'Token::deactivate/$1');
     $routes->get('token/display/(:num)', 'Token::display/$1');
     $routes->get('token/get-active-json/(:num)', 'Token::getActiveTokenJson/$1');
