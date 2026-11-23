@@ -32,6 +32,7 @@ class Setting extends BaseController
             'nama_ketua_panitia',
             'nip_ketua_panitia',
             'ttd_kartu_jabatan',
+            'cbt_min_finish_minutes',
         ];
 
         foreach ($fields as $f) {

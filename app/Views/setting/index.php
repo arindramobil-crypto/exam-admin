@@ -123,6 +123,32 @@
 
             </div>
         </div>
+
+        <!-- Kolom 3: Ketentuan Ujian & Batas Waktu Minimal Selesai -->
+        <div class="card" style="grid-column: 1 / -1;border:1px solid rgba(245,158,11,0.3);background:rgba(245,158,11,0.02)">
+            <div class="card-header" style="background:rgba(245,158,11,0.06)">
+                <span class="card-title" style="color:#f59e0b">
+                    <i class="fas fa-hourglass-start" style="margin-right:6px"></i> 3. Ketentuan Pengerjaan Ujian (CBT Kiosk & Batas Waktu Selesai)
+                </span>
+            </div>
+            <div class="card-body">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px">
+                    <div style="flex:1;min-width:280px">
+                        <label class="form-label" style="font-weight:700">Batas Waktu Minimal Sebelum Siswa Boleh Menyelesaikan Ujian</label>
+                        <p style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5">
+                            Menentukan berapa menit minimal siswa harus mengerjakan sebelum tombol <strong>"Kumpulkan semua dan selesai"</strong> di Moodle dapat ditekan. Jika belum mencapai batas waktu, tombol selesai akan terkunci otomatis dengan jam hitung mundur.
+                        </p>
+                        <div style="display:flex;align-items:center;gap:10px">
+                            <input type="number" name="cbt_min_finish_minutes" value="<?= (int)($settings['cbt_min_finish_minutes'] ?? 0) ?>" min="0" max="300" class="form-control" style="width:130px;font-weight:700;font-size:16px">
+                            <span style="font-size:13px;font-weight:600;color:var(--text)">Menit</span>
+                        </div>
+                        <small style="color:var(--muted);font-size:11px;margin-top:6px;display:block">
+                            * Isi <strong>0</strong> jika siswa bebas mengumpulkan kapan saja tanpa batas minimal pengerjaan. Pengaturan ini juga dapat diatur cepat saat ujian berjalan di menu <strong>Rilis Token CBT</strong>.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Tombol Simpan -->
