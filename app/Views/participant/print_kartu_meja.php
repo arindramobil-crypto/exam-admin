@@ -123,18 +123,18 @@ body {
     border-left: 4px solid #f59e0b;
 }
 
-/* Card Grid Layout */
+/* Card Grid Layout - 3 Kolom Portrait */
 .card-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 14px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
 }
 
 .meja-item {
     background: #fff;
     border: 1.5px solid #0f172a;
-    border-radius: 8px;
-    padding: 12px 14px;
+    border-radius: 6px;
+    padding: 8px 9px;
     box-shadow: 0 2px 6px rgba(0,0,0,0.04);
     position: relative;
     page-break-inside: avoid;
@@ -142,84 +142,87 @@ body {
 }
 
 .meja-header {
-    border-bottom: 2px solid #0f172a;
-    padding-bottom: 6px;
-    margin-bottom: 10px;
+    border-bottom: 1.5px solid #0f172a;
+    padding-bottom: 4px;
+    margin-bottom: 6px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding-right: 80px; /* space for table badge */
+    gap: 6px;
+    padding-right: 46px; /* space for table badge */
 }
 .meja-logo {
-    width: 32px;
-    height: 32px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
     flex-shrink: 0;
 }
 .meja-header-text h3 {
-    font-size: 11px;
+    font-size: 9px;
     font-weight: 800;
     text-transform: uppercase;
     color: #0f172a;
-    line-height: 1.2;
+    line-height: 1.15;
 }
 .meja-header-text p {
-    font-size: 10px;
+    font-size: 7.5px;
     color: #475569;
     margin-top: 1px;
+    line-height: 1.15;
 }
 
 .nomor-meja-badge {
     position: absolute;
-    top: 10px;
-    right: 12px;
+    top: 6px;
+    right: 8px;
     background: #0f172a;
     color: #fff;
-    padding: 5px 12px;
-    border-radius: 6px;
+    padding: 2px 7px;
+    border-radius: 4px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 16px;
+    font-size: 11.5px;
     font-weight: 900;
 }
 
 .info-row {
     display: flex;
-    font-size: 11.5px;
-    margin-bottom: 4px;
-    line-height: 1.35;
+    font-size: 9px;
+    margin-bottom: 2.5px;
+    line-height: 1.25;
 }
 .info-label {
-    width: 85px;
+    width: 66px;
     color: #475569;
     font-weight: 500;
     flex-shrink: 0;
 }
 .info-separator {
-    margin-right: 6px;
+    margin-right: 4px;
     color: #64748b;
 }
 .info-value {
     font-weight: 700;
     color: #0f172a;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 .password-box {
     font-family: 'JetBrains Mono', monospace;
     background: #f1f5f9;
-    padding: 1px 6px;
-    border-radius: 4px;
+    padding: 1px 5px;
+    border-radius: 3px;
     border: 1px solid #cbd5e1;
     color: #0f172a;
-    letter-spacing: 1px;
-    font-size: 11px;
+    letter-spacing: 0.5px;
+    font-size: 9px;
 }
 
 .meja-footer {
     border-top: 1px dashed #cbd5e1;
-    margin-top: 8px;
-    padding-top: 5px;
+    margin-top: 5px;
+    padding-top: 4px;
     display: flex;
     justify-content: space-between;
-    font-size: 9.5px;
+    font-size: 7.5px;
     color: #64748b;
 }
 
@@ -238,12 +241,12 @@ body {
         margin: 0;
     }
     .card-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
     }
     .meja-item {
         box-shadow: none;
-        border: 1.5px solid #000;
+        border: 1.2px solid #000;
         page-break-inside: avoid;
         break-inside: avoid;
     }
@@ -257,8 +260,8 @@ body {
         break-after: auto;
     }
     @page {
-        size: A4;
-        margin: 8mm;
+        size: A4 portrait;
+        margin: 6mm;
     }
 }
 </style>
@@ -286,7 +289,7 @@ if (!empty($rooms)) {
                 <?= !empty($filterKelas) ? ' &bull; Kelas: <span style="color:#fbbf24;font-weight:700">' . esc($filterKelas) . '</span>' : '' ?>
                 <?= (!empty($filterRoom) && isset($roomsMap[$filterRoom])) ? ' &bull; Ruang: <span style="color:#38bdf8;font-weight:700">' . esc($roomsMap[$filterRoom]) . '</span>' : '' ?>
                 <?= !empty($filterSesi) ? ' &bull; Sesi <span style="color:#a78bfa;font-weight:700">' . esc($filterSesi) . '</span>' : '' ?>
-                &bull; Format 6 Kartu per A4
+                &bull; Format 3 Kolom (A4 Portrait)
             </p>
         </div>
         <div class="toolbar-actions">
